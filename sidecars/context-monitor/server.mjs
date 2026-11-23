@@ -412,6 +412,7 @@ const DEFAULT_AUTO_COMPACT = {
   snoozedUntil: 0,
   lastTriggeredAt: 0,
   lastTriggeredConvId: '',
+  lastTriggeredEventTs: 0,
   lastTriggeredStatus: '',
   history: [],
 };
@@ -543,7 +544,9 @@ function runPowerShellCompact(mode, toastMeta = null, options = {}) {
       'try { if ([System.Windows.Forms.Clipboard]::ContainsText()) { $oldClip = [System.Windows.Forms.Clipboard]::GetText() } } catch {}',
       '[System.Windows.Forms.Clipboard]::SetText("/compact")',
       '[System.Windows.Forms.SendKeys]::SendWait("^v")',
-      'Start-Sleep -Milliseconds 100',
+      'Start-Sleep -Milliseconds 140',
+      '[System.Windows.Forms.SendKeys]::SendWait("{ENTER}")',
+      'Start-Sleep -Milliseconds 140',
       '[System.Windows.Forms.SendKeys]::SendWait("{ENTER}")',
       'Start-Sleep -Milliseconds 130',
       'if ($null -ne $oldClip) { try { [System.Windows.Forms.Clipboard]::SetText($oldClip) } catch {} }',
@@ -855,6 +858,7 @@ async function triggerCompactNow(source = 'manual_toast') {
     };
     autoCompactConfig.lastTriggeredAt = now;
     autoCompactConfig.lastTriggeredConvId = entry.convId;
+    if (target?.lastEventTs) autoCompactConfig.lastTriggeredEventTs = target.lastEventTs;
     autoCompactConfig.snoozedUntil = 0;
     if (res.ok && autoCompactConfig.thresholdMode === 'manual_next') {
       autoCompactConfig.thresholdMode = 'auto';
@@ -885,6 +889,13 @@ async function evaluateAutoCompact(forceTest = false) {
     if (mode === 'hook_guard' || mode === 'hook_block') return { skipped: true, reason: 'HANDLED_BY_HOOK' };
     if (!target) return { skipped: true, reason: 'NO_ACTIVE_SESSION' };
     if (target.lastEventType === 'CHECKPOINT') return { skipped: true, reason: 'ALREADY_COMPACTED' };
+    if (
+      autoCompactConfig.lastTriggeredConvId === target.convId &&
+      autoCompactConfig.lastTriggeredEventTs &&
+      autoCompactConfig.lastTriggeredEventTs === target.lastEventTs
+    ) {
+      return { skipped: true, reason: 'ALREADY_TRIGGERED_FOR_TURN' };
+    }
     if (target.contextTotal < thresholdTokens) return { skipped: true, reason: 'BELOW_THRESHOLD' };
     if (now < (autoCompactConfig.snoozedUntil || 0)) return { skipped: true, reason: 'SNOOZED' };
     if (now - target.lastEventTs < idleMs) return { skipped: true, reason: 'SESSION_BUSY' };
@@ -932,6 +943,9 @@ async function evaluateAutoCompact(forceTest = false) {
     if (!forceTest) {
       autoCompactConfig.lastTriggeredAt = now;
       autoCompactConfig.lastTriggeredConvId = entry.convId;
+      if (res.ok && target?.lastEventTs) {
+        autoCompactConfig.lastTriggeredEventTs = target.lastEventTs;
+      }
       if (res.reason === 'TOAST_DISMISSED' || res.reason === 'TOAST_TIMEOUT') {
         autoCompactConfig.snoozedUntil = now + cooldownMs;
       }
