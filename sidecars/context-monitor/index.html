@@ -880,7 +880,7 @@
       <div class="hero-left">
         <div class="hero-top-row">
           <div class="hero-target">
-            <span class="hero-tag">当前水位</span>
+            <span class="hero-tag">当前上下文</span>
             <span class="hero-conv" id="heroConvTitle">等待加载活跃会话…</span>
             <span class="model-pill" id="heroModelPill" style="display:none">-</span>
           </div>
@@ -1018,13 +1018,13 @@
         <div class="p-select-wrap" data-select-id="logCtxFilter">
           <input type="hidden" id="logCtxFilter" value="all" />
           <button type="button" class="p-select-trigger">
-            <span class="p-select-label">全部水位</span>
+            <span class="p-select-label">全部占用</span>
             <svg class="p-select-chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
           <div class="p-select-menu">
-            <div class="p-select-opt active" data-val="all"><span>全部水位</span><span class="opt-check">✓</span></div>
-            <div class="p-select-opt" data-val="ctx150"><span>高水位 (≥150K)</span><span class="opt-check">✓</span></div>
-            <div class="p-select-opt" data-val="ctx200"><span>超高水位 (≥200K)</span><span class="opt-check">✓</span></div>
+            <div class="p-select-opt active" data-val="all"><span>全部占用</span><span class="opt-check">✓</span></div>
+            <div class="p-select-opt" data-val="ctx150"><span>高占用 (≥150K)</span><span class="opt-check">✓</span></div>
+            <div class="p-select-opt" data-val="ctx200"><span>极高占用 (≥200K)</span><span class="opt-check">✓</span></div>
             <div class="p-select-opt" data-val="lowhit"><span>低命中 (&lt;70%)</span><span class="opt-check">✓</span></div>
           </div>
         </div>
@@ -1037,7 +1037,7 @@
           </button>
           <div class="p-select-menu">
             <div class="p-select-opt active" data-val="newest"><span>最新优先</span><span class="opt-check">✓</span></div>
-            <div class="p-select-opt" data-val="ctx_desc"><span>水位最高</span><span class="opt-check">✓</span></div>
+            <div class="p-select-opt" data-val="ctx_desc"><span>占用最高</span><span class="opt-check">✓</span></div>
             <div class="p-select-opt" data-val="in_desc"><span>新输入最大</span><span class="opt-check">✓</span></div>
             <div class="p-select-opt" data-val="hit_asc"><span>命中率最低</span><span class="opt-check">✓</span></div>
           </div>
@@ -1060,7 +1060,7 @@
               <th class="num">新输入 / 缓存读</th>
               <th class="num">输出</th>
               <th class="num">命中率</th>
-              <th class="num">上下文水位</th>
+              <th class="num">上下文占用</th>
             </tr>
           </thead>
           <tbody id="logBody"></tbody>
@@ -1108,7 +1108,7 @@
     <!-- Smart Reference Values -->
     <div class="drawer-section">
       <div class="drawer-sec-head">
-        <span>历史参考水位</span>
+        <span>历史参考区间</span>
         <span style="font-size:11px;font-weight:400;color:var(--subtle)">点推荐值快速填入</span>
       </div>
       <div class="ref-grid">
@@ -1561,8 +1561,8 @@ function renderKPIs(d) {
   document.getElementById('kpiCompacts').textContent = d.totalCompactions + ' 次';
   const ceil = d.thresholdAdvice?.observedCeiling;
   document.getElementById('kpiCompactsSub').textContent = d.thresholdAdvice?.cpSampleCount > 0 && ceil
-    ? `平均触发水位 ${fmtNum(ceil)}`
-    : `历史最高水位 ${fmtNum(d.thresholdAdvice?.maxObserved || 0)}`;
+    ? `平均触发点 ${fmtNum(ceil)}`
+    : `历史最高占用 ${fmtNum(d.thresholdAdvice?.maxObserved || 0)}`;
 }
 
 /* Smart Advice inside Drawer */
@@ -1576,7 +1576,7 @@ function renderAdvice(d) {
 
   const parts = [];
   if (a.cpSampleCount > 0) {
-    parts.push(`历史共 ${a.cpSampleCount} 次自动 CHECKPOINT 压缩，平均触发水位 <b>${fmtNum(a.observedCeiling)}</b>`);
+    parts.push(`历史共 ${a.cpSampleCount} 次自动 CHECKPOINT 压缩，平均触发点 <b>${fmtNum(a.observedCeiling)}</b>`);
   } else {
     parts.push(`暂未触发过 CHECKPOINT（最高上下文 <b>${fmtNum(a.maxObserved)}</b>），以 <b>${fmtNum(a.observedCeiling)}</b> 作为上限参考`);
   }
@@ -1738,7 +1738,7 @@ function renderAutoCompact(d) {
   const banner = document.getElementById('acAlertBanner');
   if (ac.needsManualAlert && target) {
     banner.style.display = 'flex';
-    document.getElementById('acAlertText').textContent = `会话「${target.convTitle}」水位 ${fmtNum(target.contextTotal)} 已达阈值 ${fmtNum(threshTokens)}，建议立即压缩。`;
+    document.getElementById('acAlertText').textContent = `会话「${target.convTitle}」上下文占用 ${fmtNum(target.contextTotal)} 已达阈值 ${fmtNum(threshTokens)}，建议立即压缩。`;
   } else {
     banner.style.display = 'none';
   }
@@ -1748,7 +1748,7 @@ function renderAutoCompact(d) {
   if (ac.showToastPrompt || acToastTestVisible) {
     document.getElementById('toastModelTag').textContent = target?.model || '当前模型';
     document.getElementById('toastBody').innerHTML = target
-      ? `会话 <b>${escHtml(target.convTitle.slice(0, 26))}</b> 当前水位 <b>${fmtNum(target.contextTotal)}</b> 已达阈值 <b>${fmtNum(threshTokens)}</b>，是否立即发送 <code>/compact</code>？`
+      ? `会话 <b>${escHtml(target.convTitle.slice(0, 26))}</b> 当前占用 <b>${fmtNum(target.contextTotal)}</b> 已达阈值 <b>${fmtNum(threshTokens)}</b>，是否立即发送 <code>/compact</code>？`
       : `预览模式：到达阈值 <b>${fmtNum(threshTokens)}</b> 后将弹出此 Toast，点击「确定压缩」立即压缩。`;
     toast.style.display = 'block';
   } else {

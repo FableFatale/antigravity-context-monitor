@@ -136,7 +136,7 @@ function main() {
         {
           errorMessage: {
             userMessage:
-              `[Context Guard] 当前上下文水位 ${fmtK(snap.contextTotal)} 已达到设定阈值 ${fmtK(thresholdTokens)} (${pct}%，缓存命中率 ${snap.hitRate}%)。\n` +
+              `[Context Guard] 当前上下文占用 ${fmtK(snap.contextTotal)} 已达到设定阈值 ${fmtK(thresholdTokens)} (${pct}%，缓存命中率 ${snap.hitRate}%)。\n` +
               `请发送 /compact 压缩上下文后再继续，或在侧栏 [Context & Cache](sidecar://context-monitor/context-monitor/) 调整阈值/模式。`,
           },
         },
@@ -158,7 +158,7 @@ function main() {
   saveJson(STATE_PATH, state);
 
   const bannerMd =
-    `> **Context & Cache Monitor**：当前上下文水位 **${fmtK(snap.contextTotal)}** / 阈值 **${fmtK(thresholdTokens)}** (${pct}% · 缓存命中 ${snap.hitRate}%)。` +
+    `> **Context & Cache Monitor**：当前上下文占用 **${fmtK(snap.contextTotal)}** / 阈值 **${fmtK(thresholdTokens)}** (${pct}% · 缓存命中 ${snap.hitRate}%)。` +
     (mode === 'ui_send'
       ? ` 本轮空闲后侧栏插件将自动发送 \`/compact\`；点击 [Context & Cache](sidecar://context-monitor/context-monitor/) 可调下次阈值。`
       : mode === 'toast_confirm'

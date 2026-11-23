@@ -803,7 +803,7 @@ async function evaluateAutoCompact(forceTest = false) {
   autoCompactRunning = true;
   try {
     const toastMeta = {
-      line1: `水位 ${fmtKShort(target?.contextTotal || thresholdTokens)} / 阈值 ${eff.effectiveK}K (${target?.model || '当前模型'})`,
+      line1: `当前占用 ${fmtKShort(target?.contextTotal || thresholdTokens)} / 阈值 ${eff.effectiveK}K (${target?.model || '当前模型'})`,
       line2: (target?.convTitle || '测试压缩确认弹窗').slice(0, 32),
     };
     const res = (mode === 'hook_guard' || mode === 'hook_block')
@@ -811,8 +811,8 @@ async function evaluateAutoCompact(forceTest = false) {
           ok: true,
           reason: 'HOOK_ACTIVE',
           message: mode === 'hook_block'
-            ? `Hook 硬拦截已就绪：下次对话前若水位 >= ${eff.effectiveK}K 将自动暂停等待 /compact`
-            : `Hook 护航已就绪：下次对话前若水位 >= ${eff.effectiveK}K 将注入收尾提醒与内联横幅`,
+            ? `Hook 硬拦截已就绪：下次对话前若上下文占用 >= ${eff.effectiveK}K 将自动暂停等待 /compact`
+            : `Hook 护航已就绪：下次对话前若上下文占用 >= ${eff.effectiveK}K 将注入收尾提醒与内联横幅`,
         }
       : await runPowerShellCompact(mode, toastMeta);
     const entry = {
