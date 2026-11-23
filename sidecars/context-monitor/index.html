@@ -842,13 +842,29 @@
     <div class="topbar-left">
       <span class="live-dot" id="liveDot"></span>
       <span class="brand-title">Context &amp; Cache</span>
-      <span class="status-badge" id="lastActiveBadge">加载中…</span>
+      <span class="status-badge" id="lastActiveBadge" data-i18n="loading">加载中…</span>
       <div class="filter-chips" id="filterChips"></div>
     </div>
 
     <div class="controls">
+      <div class="p-select-wrap" data-select-id="uiLang">
+        <input type="hidden" id="uiLang" value="auto" />
+        <button type="button" class="p-select-trigger" style="height:32px;border-radius:8px;border:none;box-shadow:var(--shadow-low);padding:0 10px">
+          <span class="p-select-label">🌐 Auto</span>
+          <svg class="p-select-chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="p-select-menu">
+          <div class="p-select-opt active" data-val="auto"><span data-i18n="langAuto">🌐 Auto</span><span class="opt-check">✓</span></div>
+          <div class="p-select-opt" data-val="en"><span>English</span><span class="opt-check">✓</span></div>
+          <div class="p-select-opt" data-val="zh"><span>简体中文</span><span class="opt-check">✓</span></div>
+          <div class="p-select-opt" data-val="ja"><span>日本語</span><span class="opt-check">✓</span></div>
+          <div class="p-select-opt" data-val="fr"><span>Français</span><span class="opt-check">✓</span></div>
+          <div class="p-select-opt" data-val="de"><span>Deutsch</span><span class="opt-check">✓</span></div>
+        </div>
+      </div>
+
       <div class="dd-wrap" id="dayDropdown">
-        <button type="button" class="dd-trigger cal-trigger" id="dayTrigger" title="选择分时图日期">
+        <button type="button" class="dd-trigger cal-trigger" id="dayTrigger" data-i18n-title="pickDateTitle" title="选择分时图日期">
           <span id="dayLabel">-</span>
           <svg class="dd-chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h.25A2.75 2.75 0 0118 6.75v8.5A2.75 2.75 0 0115.25 18H4.75A2.75 2.75 0 012 15.25v-8.5A2.75 2.75 0 014.75 4H5V2.75A2.75 2.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75z" clip-rule="evenodd"/></svg>
         </button>
@@ -856,49 +872,49 @@
           <div class="cal-head">
             <span class="cal-month" id="calMonthLabel"></span>
             <div class="cal-nav">
-              <button type="button" id="calPrev" title="上个月">&lsaquo;</button>
-              <button type="button" id="calNext" title="下个月">&rsaquo;</button>
+              <button type="button" id="calPrev">&lsaquo;</button>
+              <button type="button" id="calNext">&rsaquo;</button>
             </div>
           </div>
-          <div class="cal-weekdays"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+          <div class="cal-weekdays" id="calWeekdays"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
           <div class="cal-grid" id="calGrid"></div>
-          <div class="cal-foot"><button type="button" class="btn btn-xs" id="calToday">今天</button></div>
+          <div class="cal-foot"><button type="button" class="btn btn-xs" id="calToday" data-i18n="today">今天</button></div>
         </div>
       </div>
 
-      <button type="button" class="btn" id="pauseBtn">暂停</button>
+      <button type="button" class="btn" id="pauseBtn" data-i18n="pause">暂停</button>
       <button type="button" class="btn" id="openSettingsBtn">
         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" style="color:var(--muted)"><circle cx="10" cy="10" r="2.5"/><path d="M16.2 12.2a1.3 1.3 0 00.26 1.43l.05.05a1.58 1.58 0 11-2.23 2.23l-.05-.05a1.3 1.3 0 00-1.43-.26 1.3 1.3 0 00-.79 1.19v.14a1.58 1.58 0 11-3.16 0v-.07a1.3 1.3 0 00-.85-1.19 1.3 1.3 0 00-1.43.26l-.05.05a1.58 1.58 0 11-2.23-2.23l.05-.05a1.3 1.3 0 00.26-1.43 1.3 1.3 0 00-1.19-.79h-.14a1.58 1.58 0 110-3.16h.07a1.3 1.3 0 001.19-.85 1.3 1.3 0 00-.26-1.43l-.05-.05a1.58 1.58 0 112.23-2.23l.05.05a1.3 1.3 0 001.43.26h.06a1.3 1.3 0 00.79-1.19v-.14a1.58 1.58 0 113.16 0v.07a1.3 1.3 0 00.79 1.19 1.3 1.3 0 001.43-.26l.05-.05a1.58 1.58 0 112.23 2.23l-.05.05a1.3 1.3 0 00-.26 1.43v.06a1.3 1.3 0 001.19.79h.14a1.58 1.58 0 110 3.16h-.07a1.3 1.3 0 00-1.19.79z"/></svg>
-        <span>压缩设置</span>
+        <span data-i18n="settingsBtn">压缩设置</span>
       </button>
     </div>
   </header>
 
-  <!-- 2. Hero Live Context Watermark & Auto-Compact Strip -->
+  <!-- 2. Hero Live Context Occupancy & Auto-Compact Strip -->
   <section class="card hero-card">
     <div class="hero-main">
       <div class="hero-left">
         <div class="hero-top-row">
           <div class="hero-target">
-            <span class="hero-tag">当前上下文</span>
-            <span class="hero-conv" id="heroConvTitle">等待加载活跃会话…</span>
+            <span class="hero-tag" data-i18n="heroTag">当前上下文</span>
+            <span class="hero-conv" id="heroConvTitle">-</span>
             <span class="model-pill" id="heroModelPill" style="display:none">-</span>
           </div>
           <div class="hero-readout">
             <span class="hero-val" id="heroCurrentVal">-</span>
-            <span class="hero-thresh">/ 阈值 <b id="heroThreshVal">-</b></span>
-            <span class="status-badge" id="heroStateBadge">未开启</span>
+            <span class="hero-thresh">/ <span data-i18n="thresholdShort">阈值</span> <b id="heroThreshVal">-</b></span>
+            <span class="status-badge" id="heroStateBadge">-</span>
           </div>
         </div>
 
         <div class="hero-track">
           <div class="hero-fill" id="heroBarFill" style="width:0%"></div>
-          <div class="hero-tick soft" id="heroSoftTick" style="left:55%;display:none" title="软预警线"></div>
-          <div class="hero-tick thresh" id="heroThreshTick" style="left:72%;display:none" title="压缩阈值"></div>
+          <div class="hero-tick soft" id="heroSoftTick" style="left:55%;display:none"></div>
+          <div class="hero-tick thresh" id="heroThreshTick" style="left:72%;display:none"></div>
         </div>
 
         <div class="hero-meta">
-          <span id="heroHint">等待加载阈值分析…</span>
+          <span id="heroHint">-</span>
           <span id="heroModeLine">-</span>
         </div>
       </div>
@@ -907,41 +923,41 @@
         <label class="p-switch">
           <input type="checkbox" id="acEnabled" />
           <span class="p-switch-track"></span>
-          <span>自动压缩</span>
+          <span data-i18n="autoCompactSwitch">自动压缩</span>
         </label>
-        <button type="button" class="btn btn-primary btn-sm" id="acCompactNowBtn">立即压缩</button>
+        <button type="button" class="btn btn-primary btn-sm" id="acCompactNowBtn" data-i18n="compactNowBtn">立即压缩</button>
       </div>
     </div>
 
     <div class="hero-alert" id="acAlertBanner">
-      <span id="acAlertText">当前活跃会话已达到设定阈值</span>
+      <span id="acAlertText">-</span>
       <div style="display:flex;gap:6px;align-items:center">
-        <button type="button" class="btn btn-primary btn-xs" id="acBannerCompactBtn">确定压缩</button>
-        <button type="button" class="btn btn-xs" id="acBannerBumpBtn">本次 +20K</button>
-        <button type="button" class="btn btn-xs" id="acCopyCmdBtn">复制 /compact</button>
+        <button type="button" class="btn btn-primary btn-xs" id="acBannerCompactBtn" data-i18n="confirmCompact">确定压缩</button>
+        <button type="button" class="btn btn-xs" id="acBannerBumpBtn" data-i18n="bump20K">本次 +20K</button>
+        <button type="button" class="btn btn-xs" id="acCopyCmdBtn" data-i18n="copyCmd">复制 /compact</button>
       </div>
     </div>
   </section>
 
   <!-- 3. Four Crisp KPI Cards -->
   <section class="kpi-grid">
-    <div class="card kpi-card clickable" id="kpiTokensCard" title="点击查看全部请求明细">
-      <div class="kpi-label">总 Token</div>
+    <div class="card kpi-card clickable" id="kpiTokensCard">
+      <div class="kpi-label" data-i18n="kpiTokens">总 Token</div>
       <div class="kpi-val" id="kpiTokens">-</div>
       <div class="kpi-sub" id="kpiTokensSub">-</div>
     </div>
-    <div class="card kpi-card clickable" id="kpiHitCard" title="点击查看非压缩缓存骤降">
-      <div class="kpi-label">缓存命中率</div>
+    <div class="card kpi-card clickable" id="kpiHitCard">
+      <div class="kpi-label" data-i18n="kpiHit">缓存命中率</div>
       <div class="kpi-val green" id="kpiHit">-</div>
       <div class="progress-track"><div class="progress-fill" id="hitBar" style="width:0%"></div></div>
     </div>
-    <div class="card kpi-card clickable" id="kpiReqsCard" title="点击查看错误记录">
-      <div class="kpi-label">请求数</div>
+    <div class="card kpi-card clickable" id="kpiReqsCard">
+      <div class="kpi-label" data-i18n="kpiReqs">请求数</div>
       <div class="kpi-val" id="kpiReqs">-</div>
       <div class="kpi-sub" id="kpiReqsSub">-</div>
     </div>
-    <div class="card kpi-card clickable" id="kpiCompactsCard" title="点击查看触发压缩记录">
-      <div class="kpi-label">上下文压缩 (CHECKPOINT)</div>
+    <div class="card kpi-card clickable" id="kpiCompactsCard">
+      <div class="kpi-label" data-i18n="kpiCompacts">上下文压缩 (CHECKPOINT)</div>
       <div class="kpi-val" id="kpiCompacts">-</div>
       <div class="kpi-sub" id="kpiCompactsSub">-</div>
     </div>
@@ -952,26 +968,26 @@
     <div class="chart-header">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <div class="seg" id="metricTabs">
-          <button class="active" data-metric="tokens">Token</button>
-          <button data-metric="requests">请求</button>
-          <button data-metric="hitRate">命中率</button>
-          <button data-metric="compactions">压缩</button>
+          <button class="active" data-metric="tokens" data-i18n="tabTokens">Token</button>
+          <button data-metric="requests" data-i18n="tabReqs">请求</button>
+          <button data-metric="hitRate" data-i18n="tabHit">命中率</button>
+          <button data-metric="compactions" data-i18n="tabCompacts">压缩</button>
         </div>
         <div class="seg" id="canvasTabs">
-          <button class="active" data-canvas="hourly">24h 分时</button>
-          <button data-canvas="heatmap">53周热力图</button>
+          <button class="active" data-canvas="hourly" data-i18n="tabHourly">24h 分时</button>
+          <button data-canvas="heatmap" data-i18n="tabHeatmap">53周热力图</button>
         </div>
       </div>
 
       <div class="heatmap-legend-inline" id="hmLegendInline" style="display:none">
-        <span id="hmMetricNote" style="margin-right:4px">点格子跳转当天分时</span>
-        <span>少</span>
+        <span id="hmMetricNote" style="margin-right:4px">-</span>
+        <span data-i18n="less">少</span>
         <i class="hm-box" style="background:#f1f5f9"></i>
         <i class="hm-box" style="background:#c7d2fe"></i>
         <i class="hm-box" style="background:#818cf8"></i>
         <i class="hm-box" style="background:#4f46e5"></i>
         <i class="hm-box" style="background:#312e81"></i>
-        <span>多</span>
+        <span data-i18n="more">多</span>
       </div>
     </div>
 
@@ -988,12 +1004,12 @@
       <div class="rank-panel">
         <div class="rank-head">
           <div class="seg" id="rankTabs">
-            <button class="active" data-rank="models">按模型</button>
-            <button data-rank="convs">按会话</button>
+            <button class="active" data-rank="models" data-i18n="byModel">按模型</button>
+            <button data-rank="convs" data-i18n="byConv">按会话</button>
           </div>
-          <span style="font-size:11px;color:var(--subtle)" id="rankFilterSub">点击筛选</span>
+          <span style="font-size:11px;color:var(--subtle)" id="rankFilterSub">-</span>
         </div>
-        <input type="text" id="rankConvSearch" class="p-input rank-search" placeholder="搜索全部本地会话…" />
+        <input type="text" id="rankConvSearch" class="p-input rank-search" data-i18n-placeholder="searchAllConvs" placeholder="搜索全部本地会话…" />
         <div class="rank-list" id="rankList"></div>
       </div>
     </div>
@@ -1003,17 +1019,17 @@
   <section class="card logs-card" id="logsCard">
     <div class="logs-head" id="logsHead">
       <div class="logs-left">
-        <span class="logs-title">请求明细</span>
+        <span class="logs-title" data-i18n="logsTitle">请求明细</span>
         <div class="seg" id="logTabs">
-          <button class="active" data-filter="all">全部 <span class="seg-count" id="ftAll">-</span></button>
-          <button data-filter="checkpoint">压缩 <span class="seg-count" id="ftCp">-</span></button>
-          <button data-filter="drop">缓存骤降 <span class="seg-count" id="ftDrop">-</span></button>
-          <button data-filter="error">错误 <span class="seg-count" id="ftErr">-</span></button>
+          <button class="active" data-filter="all"><span data-i18n="logAll">全部</span> <span class="seg-count" id="ftAll">-</span></button>
+          <button data-filter="checkpoint"><span data-i18n="logCp">压缩</span> <span class="seg-count" id="ftCp">-</span></button>
+          <button data-filter="drop"><span data-i18n="logDrop">缓存骤降</span> <span class="seg-count" id="ftDrop">-</span></button>
+          <button data-filter="error"><span data-i18n="logErr">错误</span> <span class="seg-count" id="ftErr">-</span></button>
         </div>
       </div>
 
       <div class="logs-right">
-        <input type="text" id="logSearch" class="p-input" placeholder="搜索会话 / 模型 / 详情…" style="width:175px;background:var(--surface-2)" />
+        <input type="text" id="logSearch" class="p-input" data-i18n-placeholder="logSearchPh" placeholder="搜索会话 / 模型 / 详情…" style="width:175px;background:var(--surface-2)" />
 
         <div class="p-select-wrap" data-select-id="logCtxFilter">
           <input type="hidden" id="logCtxFilter" value="all" />
@@ -1022,10 +1038,10 @@
             <svg class="p-select-chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
           <div class="p-select-menu">
-            <div class="p-select-opt active" data-val="all"><span>全部占用</span><span class="opt-check">✓</span></div>
-            <div class="p-select-opt" data-val="ctx150"><span>高占用 (≥150K)</span><span class="opt-check">✓</span></div>
-            <div class="p-select-opt" data-val="ctx200"><span>极高占用 (≥200K)</span><span class="opt-check">✓</span></div>
-            <div class="p-select-opt" data-val="lowhit"><span>低命中 (&lt;70%)</span><span class="opt-check">✓</span></div>
+            <div class="p-select-opt active" data-val="all"><span data-i18n="ctxAll">全部占用</span><span class="opt-check">✓</span></div>
+            <div class="p-select-opt" data-val="ctx150"><span data-i18n="ctx150">高占用 (≥150K)</span><span class="opt-check">✓</span></div>
+            <div class="p-select-opt" data-val="ctx200"><span data-i18n="ctx200">极高占用 (≥200K)</span><span class="opt-check">✓</span></div>
+            <div class="p-select-opt" data-val="lowhit"><span data-i18n="ctxLowHit">低命中 (&lt;70%)</span><span class="opt-check">✓</span></div>
           </div>
         </div>
 
@@ -1036,14 +1052,14 @@
             <svg class="p-select-chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
           <div class="p-select-menu">
-            <div class="p-select-opt active" data-val="newest"><span>最新优先</span><span class="opt-check">✓</span></div>
-            <div class="p-select-opt" data-val="ctx_desc"><span>占用最高</span><span class="opt-check">✓</span></div>
-            <div class="p-select-opt" data-val="in_desc"><span>新输入最大</span><span class="opt-check">✓</span></div>
-            <div class="p-select-opt" data-val="hit_asc"><span>命中率最低</span><span class="opt-check">✓</span></div>
+            <div class="p-select-opt active" data-val="newest"><span data-i18n="sortNewest">最新优先</span><span class="opt-check">✓</span></div>
+            <div class="p-select-opt" data-val="ctx_desc"><span data-i18n="sortCtx">占用最高</span><span class="opt-check">✓</span></div>
+            <div class="p-select-opt" data-val="in_desc"><span data-i18n="sortIn">新输入最大</span><span class="opt-check">✓</span></div>
+            <div class="p-select-opt" data-val="hit_asc"><span data-i18n="sortHit">命中率最低</span><span class="opt-check">✓</span></div>
           </div>
         </div>
 
-        <button type="button" id="logResetBtn" class="btn btn-sm" style="display:none;color:var(--indigo)">重置</button>
+        <button type="button" id="logResetBtn" class="btn btn-sm" style="display:none;color:var(--indigo)" data-i18n="resetBtn">重置</button>
         <button type="button" id="toggleLogBodyBtn" class="btn btn-sm" style="color:var(--muted)">收起</button>
       </div>
     </div>
@@ -1053,14 +1069,14 @@
         <table>
           <thead>
             <tr>
-              <th>时间</th>
-              <th>会话</th>
-              <th>模型</th>
-              <th>事件</th>
-              <th class="num">新输入 / 缓存读</th>
-              <th class="num">输出</th>
-              <th class="num">命中率</th>
-              <th class="num">上下文占用</th>
+              <th data-i18n="thTime">时间</th>
+              <th data-i18n="thConv">会话</th>
+              <th data-i18n="thModel">模型</th>
+              <th data-i18n="thEvent">事件</th>
+              <th class="num" data-i18n="thInCache">新输入 / 缓存读</th>
+              <th class="num" data-i18n="thOut">输出</th>
+              <th class="num" data-i18n="thHit">命中率</th>
+              <th class="num" data-i18n="thCtx">上下文占用</th>
             </tr>
           </thead>
           <tbody id="logBody"></tbody>
@@ -1072,20 +1088,20 @@
           <div class="p-select-wrap" data-select-id="logPageSize">
             <input type="hidden" id="logPageSize" value="10" />
             <button type="button" class="p-select-trigger" style="height:24px;font-size:11px;padding:0 7px">
-              <span class="p-select-label">10条/页</span>
+              <span class="p-select-label">10 / page</span>
               <svg class="p-select-chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
             <div class="p-select-menu">
-              <div class="p-select-opt active" data-val="10"><span>10条/页</span><span class="opt-check">✓</span></div>
-              <div class="p-select-opt" data-val="20"><span>20条/页</span><span class="opt-check">✓</span></div>
-              <div class="p-select-opt" data-val="50"><span>50条/页</span><span class="opt-check">✓</span></div>
+              <div class="p-select-opt active" data-val="10"><span data-i18n="page10">10条/页</span><span class="opt-check">✓</span></div>
+              <div class="p-select-opt" data-val="20"><span data-i18n="page20">20条/页</span><span class="opt-check">✓</span></div>
+              <div class="p-select-opt" data-val="50"><span data-i18n="page50">50条/页</span><span class="opt-check">✓</span></div>
             </div>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
-          <button type="button" id="logPrevBtn" class="btn btn-xs">上一页</button>
+          <button type="button" id="logPrevBtn" class="btn btn-xs" data-i18n="prevPage">上一页</button>
           <span id="logPageNum" style="font-variant-numeric:tabular-nums">1 / 1</span>
-          <button type="button" id="logNextBtn" class="btn btn-xs">下一页</button>
+          <button type="button" id="logNextBtn" class="btn btn-xs" data-i18n="nextPage">下一页</button>
         </div>
       </div>
     </div>
@@ -1098,30 +1114,30 @@
 <aside class="drawer-panel" id="settingsDrawer" aria-hidden="true">
   <div class="drawer-head">
     <div>
-      <div style="font-size:14px;font-weight:700;color:var(--text)">智能阈值与自动压缩</div>
-      <div style="font-size:11px;color:var(--subtle);margin-top:2px" id="adviceScopeTag">基于历史用量与缓存行为</div>
+      <div style="font-size:14px;font-weight:700;color:var(--text)" data-i18n="drawerTitle">智能阈值与自动压缩</div>
+      <div style="font-size:11px;color:var(--subtle);margin-top:2px" id="adviceScopeTag">-</div>
     </div>
-    <button type="button" class="btn btn-xs" id="closeDrawerBtn" style="width:28px;height:28px;padding:0;justify-content:center" title="关闭">✕</button>
+    <button type="button" class="btn btn-xs" id="closeDrawerBtn" style="width:28px;height:28px;padding:0;justify-content:center">✕</button>
   </div>
 
   <div class="drawer-body">
     <!-- Smart Reference Values -->
     <div class="drawer-section">
       <div class="drawer-sec-head">
-        <span>历史参考区间</span>
-        <span style="font-size:11px;font-weight:400;color:var(--subtle)">点推荐值快速填入</span>
+        <span data-i18n="refTitle">历史参考区间</span>
+        <span style="font-size:11px;font-weight:400;color:var(--subtle)" data-i18n="refClickHint">点推荐值快速填入</span>
       </div>
       <div class="ref-grid">
         <div class="ref-box">
-          <span class="ref-lbl">软预警线</span>
+          <span class="ref-lbl" data-i18n="softWarnLbl">软预警线</span>
           <span class="ref-val" style="color:var(--amber)" id="advSoft">-</span>
         </div>
-        <div class="ref-box rec" id="advRecBox" title="点击将此推荐值设为压缩阈值">
-          <span class="ref-lbl" style="color:var(--indigo);font-weight:600">推荐临界值</span>
+        <div class="ref-box rec" id="advRecBox">
+          <span class="ref-lbl" style="color:var(--indigo);font-weight:600" data-i18n="recThreshLbl">推荐临界值</span>
           <span class="ref-val" style="color:var(--indigo)" id="advRec">-</span>
         </div>
         <div class="ref-box">
-          <span class="ref-lbl">实测上限</span>
+          <span class="ref-lbl" data-i18n="ceilLbl">实测上限</span>
           <span class="ref-val" id="advCeil">-</span>
         </div>
       </div>
@@ -1131,54 +1147,54 @@
     <!-- Threshold Slider -->
     <div class="drawer-section">
       <div class="drawer-sec-head">
-        <span>压缩阈值 (K tokens)</span>
+        <span data-i18n="threshSecTitle">压缩阈值 (K tokens)</span>
         <div style="display:flex;align-items:center;gap:6px">
-          <span class="status-badge indigo" id="acThresholdBadge">自动阈值</span>
-          <button type="button" id="acResetAutoBtn" class="btn btn-xs" style="display:none;color:var(--indigo)">恢复自动</button>
+          <span class="status-badge indigo" id="acThresholdBadge">-</span>
+          <button type="button" id="acResetAutoBtn" class="btn btn-xs" style="display:none;color:var(--indigo)" data-i18n="resetAutoBtn">恢复自动</button>
         </div>
       </div>
       <div style="display:flex;gap:10px;align-items:center">
         <input type="range" id="acThresholdRange" class="p-range" min="80" max="320" step="10" value="180" style="flex:1" />
         <input type="number" id="acThresholdK" class="p-input" min="50" max="500" step="10" value="180" style="width:64px;font-size:13px;font-weight:600;text-align:center" />
       </div>
-      <div id="acThresholdSub" style="font-size:11px;color:var(--subtle);line-height:1.45">按当前模型与近期记录自动计算；手动调值仅生效于下一次压缩</div>
+      <div id="acThresholdSub" style="font-size:11px;color:var(--subtle);line-height:1.45">-</div>
       <label class="p-check" style="margin-top:2px">
         <input type="checkbox" id="acLockManual" />
         <span class="p-check-box"></span>
-        <span>锁定手动值（否则压缩一次后恢复自动）</span>
+        <span data-i18n="lockManualLbl">锁定手动值（否则压缩一次后恢复自动）</span>
       </label>
     </div>
 
     <!-- Trigger Behavior -->
     <div class="drawer-section">
-      <div class="drawer-sec-head"><span>到达阈值后的行为</span></div>
+      <div class="drawer-sec-head"><span data-i18n="behaviorTitle">到达阈值后的行为</span></div>
       <div class="p-select-wrap block" data-select-id="acMode">
         <input type="hidden" id="acMode" value="ui_send" />
         <button type="button" class="p-select-trigger">
-          <span class="p-select-label">全自动静默压缩（前台空闲触发 + Hook 护航）</span>
+          <span class="p-select-label">-</span>
           <svg class="p-select-chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
         <div class="p-select-menu">
-          <div class="p-select-opt active" data-val="ui_send"><span>全自动静默压缩（前台空闲触发 + Hook 护航）</span><span class="opt-check">✓</span></div>
-          <div class="p-select-opt" data-val="hook_guard"><span>仅内部 Hook 护航（100% 不碰窗口）</span><span class="opt-check">✓</span></div>
-          <div class="p-select-opt" data-val="toast_confirm"><span>小 Toast 提醒（点确定立马压缩）</span><span class="opt-check">✓</span></div>
-          <div class="p-select-opt" data-val="hook_block"><span>Hook 硬拦截（到阈值暂停等 /compact）</span><span class="opt-check">✓</span></div>
-          <div class="p-select-opt" data-val="notify"><span>仅强提醒 + 复制 /compact</span><span class="opt-check">✓</span></div>
+          <div class="p-select-opt active" data-val="ui_send"><span data-i18n="modeOptUiSend">全自动静默压缩（前台空闲触发 + Hook 护航）</span><span class="opt-check">✓</span></div>
+          <div class="p-select-opt" data-val="hook_guard"><span data-i18n="modeOptHookGuard">仅内部 Hook 护航（100% 不碰窗口）</span><span class="opt-check">✓</span></div>
+          <div class="p-select-opt" data-val="toast_confirm"><span data-i18n="modeOptToast">小 Toast 提醒（点确定立马压缩）</span><span class="opt-check">✓</span></div>
+          <div class="p-select-opt" data-val="hook_block"><span data-i18n="modeOptHookBlock">Hook 硬拦截（到阈值暂停等 /compact）</span><span class="opt-check">✓</span></div>
+          <div class="p-select-opt" data-val="notify"><span data-i18n="modeOptNotify">仅强提醒 + 复制 /compact</span><span class="opt-check">✓</span></div>
         </div>
       </div>
-      <div id="acModeHint" style="font-size:11px;color:var(--subtle);line-height:1.45">同时启用内部 Hook 收尾护航，且仅在 Antigravity 处于前台、键鼠空闲时静默发送 /compact（绝不跨软件抢窗口焦点）</div>
+      <div id="acModeHint" style="font-size:11px;color:var(--subtle);line-height:1.45">-</div>
     </div>
 
     <!-- Timing -->
     <div class="drawer-section">
-      <div class="drawer-sec-head"><span>空闲等待与冷却时间</span></div>
+      <div class="drawer-sec-head"><span data-i18n="timingTitle">空闲等待与冷却时间</span></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted)">
-          <span>空闲等待 (秒)</span>
+          <span data-i18n="idleWaitLbl">空闲等待 (秒)</span>
           <input type="number" id="acIdleSec" class="p-input" min="2" max="120" value="8" style="text-align:center" />
         </label>
         <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted)">
-          <span>最小冷却 (秒)</span>
+          <span data-i18n="cooldownLbl">最小冷却 (秒)</span>
           <input type="number" id="acCooldownSec" class="p-input" min="15" max="3600" value="120" style="text-align:center" />
         </label>
       </div>
@@ -1190,10 +1206,10 @@
   </div>
 
   <div class="drawer-foot">
-    <button type="button" id="acTestBtn" class="btn btn-sm">测试触发</button>
+    <button type="button" id="acTestBtn" class="btn btn-sm" data-i18n="testBtn">测试触发</button>
     <div style="display:flex;gap:8px">
-      <button type="button" id="cancelDrawerBtn" class="btn btn-sm">关闭</button>
-      <button type="button" id="acSaveBtn" class="btn btn-primary btn-sm">保存设置</button>
+      <button type="button" id="cancelDrawerBtn" class="btn btn-sm" data-i18n="closeBtn">关闭</button>
+      <button type="button" id="acSaveBtn" class="btn btn-primary btn-sm" data-i18n="saveBtn">保存设置</button>
     </div>
   </div>
 </aside>
@@ -1203,14 +1219,14 @@
   <div style="height:4px;background:var(--indigo)"></div>
   <div style="padding:12px 14px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-      <span style="font-size:13px;font-weight:700;color:var(--text)">已到达压缩阈值</span>
+      <span style="font-size:13px;font-weight:700;color:var(--text)" data-i18n="toastTitle">已到达压缩阈值</span>
       <span id="toastModelTag" style="font-size:10px;color:var(--indigo);background:rgba(37,99,235,0.08);padding:2px 6px;border-radius:999px;font-weight:600">-</span>
     </div>
     <div id="toastBody" style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px">-</div>
     <div style="display:flex;gap:6px;align-items:center">
-      <button type="button" id="toastConfirmBtn" class="btn btn-primary btn-sm" style="flex:1;justify-content:center">确定压缩 (/compact)</button>
-      <button type="button" id="toastBumpBtn" class="btn btn-sm" title="把本次压缩阈值提高 20K">+20K</button>
-      <button type="button" id="toastDismissBtn" class="btn btn-sm" style="color:var(--muted)">暂不</button>
+      <button type="button" id="toastConfirmBtn" class="btn btn-primary btn-sm" style="flex:1;justify-content:center" data-i18n="toastConfirmBtn">确定压缩 (/compact)</button>
+      <button type="button" id="toastBumpBtn" class="btn btn-sm">+20K</button>
+      <button type="button" id="toastDismissBtn" class="btn btn-sm" style="color:var(--muted)" data-i18n="toastDismissBtn">暂不</button>
     </div>
   </div>
 </div>
@@ -1219,6 +1235,939 @@
 
 <script>
 const PALETTE = ['#2563eb', '#0284c7', '#059669', '#d97706', '#ec4899', '#7c3aed'];
+const VALID_LANGS = new Set(['en', 'zh', 'ja', 'fr', 'de']);
+
+function detectBrowserLang() {
+  const list = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'en'];
+  for (const raw of list) {
+    const code = String(raw || '').toLowerCase();
+    if (code.startsWith('zh')) return 'zh';
+    if (code.startsWith('ja')) return 'ja';
+    if (code.startsWith('fr')) return 'fr';
+    if (code.startsWith('de')) return 'de';
+    if (code.startsWith('en')) return 'en';
+  }
+  return 'en';
+}
+
+function resolveUiLang(pref) {
+  if (pref && pref !== 'auto' && VALID_LANGS.has(pref)) return pref;
+  return detectBrowserLang();
+}
+
+const I18N = {
+  en: {
+    langAuto: '🌐 Auto (System)',
+    loading: 'Loading…',
+    pickDateTitle: 'Select date',
+    today: 'Today',
+    weekdays: ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'],
+    hmDays: { 0: 'Mon', 2: 'Wed', 4: 'Fri', 6: 'Sun' },
+    monthFmt: (y, m) => `${y}-${String(m).padStart(2, '0')}`,
+    shortMonth: (m) => ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m - 1],
+    pause: 'Pause',
+    resume: 'Resume',
+    settingsBtn: 'Settings',
+    heroTag: 'Active Context',
+    thresholdShort: 'Threshold',
+    autoCompactSwitch: 'Auto-Compact',
+    compactNowBtn: 'Compact Now',
+    compactingBtn: 'Compacting…',
+    confirmCompact: 'Compact Now',
+    bump20K: '+20K Once',
+    copyCmd: 'Copy /compact',
+    kpiTokens: 'Total Tokens',
+    kpiHit: 'Cache Hit Rate',
+    kpiReqs: 'Requests',
+    kpiCompacts: 'Compactions (CHECKPOINT)',
+    tabTokens: 'Tokens',
+    tabReqs: 'Requests',
+    tabHit: 'Hit Rate',
+    tabCompacts: 'Compactions',
+    tabHourly: '24h Hourly',
+    tabHeatmap: '53w Heatmap',
+    less: 'Less',
+    more: 'More',
+    byModel: 'By Model',
+    byConv: 'By Session',
+    searchAllConvs: 'Search all local sessions…',
+    logsTitle: 'Request Log',
+    logAll: 'All',
+    logCp: 'Compactions',
+    logDrop: 'Cache Drops',
+    logErr: 'Errors',
+    logSearchPh: 'Search session / model…',
+    ctxAll: 'All Occupancy',
+    ctx150: 'High (≥150K)',
+    ctx200: 'Very High (≥200K)',
+    ctxLowHit: 'Low Hit (<70%)',
+    sortNewest: 'Newest First',
+    sortCtx: 'Highest Occupancy',
+    sortIn: 'Largest New Input',
+    sortHit: 'Lowest Hit Rate',
+    resetBtn: 'Reset',
+    collapseBtn: 'Collapse',
+    expandBtn: 'Expand',
+    thTime: 'Time',
+    thConv: 'Session',
+    thModel: 'Model',
+    thEvent: 'Event',
+    thInCache: 'New In / Cache Read',
+    thOut: 'Output',
+    thHit: 'Hit Rate',
+    thCtx: 'Context Occupancy',
+    page10: '10 / page',
+    page20: '20 / page',
+    page50: '50 / page',
+    prevPage: 'Prev',
+    nextPage: 'Next',
+    drawerTitle: 'Smart Threshold & Auto-Compact',
+    refTitle: 'Historical Reference',
+    refClickHint: 'Click recommended to apply',
+    softWarnLbl: 'Early Warning',
+    recThreshLbl: 'Recommended',
+    ceilLbl: 'Observed Ceiling',
+    threshSecTitle: 'Threshold (K tokens)',
+    resetAutoBtn: 'Reset Auto',
+    lockManualLbl: 'Lock manual value (otherwise resets after next compaction)',
+    behaviorTitle: 'Action on Threshold',
+    modeOptUiSend: 'Silent Auto-Compact (Foreground Idle + Hook Guard)',
+    modeOptHookGuard: 'Internal Hook Guard Only (100% Zero Window Touch)',
+    modeOptToast: 'Desktop Toast Confirmation',
+    modeOptHookBlock: 'Hook Hard Gate (Pause Until /compact)',
+    modeOptNotify: 'Notify & Copy /compact Only',
+    timingTitle: 'Idle Wait & Cooldown',
+    idleWaitLbl: 'Idle Wait (sec)',
+    cooldownLbl: 'Cooldown (sec)',
+    testBtn: 'Test Trigger',
+    testingBtn: 'Testing…',
+    closeBtn: 'Close',
+    saveBtn: 'Save',
+    toastTitle: 'Threshold Reached',
+    toastConfirmBtn: 'Compact (/compact)',
+    toastDismissBtn: 'Later',
+    modeShort: {
+      ui_send: 'Foreground Silent + Hook Guard',
+      toast_confirm: 'Toast Confirm',
+      hook_guard: 'Internal Hook Guard',
+      hook_block: 'Hook Hard Gate',
+      notify: 'Notify & Copy',
+    },
+    modeHints: {
+      ui_send: 'Runs internal Hook Guard and silently sends /compact only when Antigravity is in the foreground and keyboard/mouse are idle (never steals window focus).',
+      toast_confirm: 'Shows a non-focus-stealing bottom-right toast when threshold is reached.',
+      hook_guard: '100% in-process: guides the model via PreInvocation Hook to wrap up without touching any window.',
+      hook_block: 'Pauses the next model invocation once threshold is reached until /compact is run.',
+      notify: 'Copies /compact to clipboard and plays a subtle tone.',
+    },
+    relSec: (n) => `${n}s ago`,
+    relMin: (n) => `${n}m ago`,
+    relHr: (n) => `${n}h ago`,
+    relDay: (n) => `${n}d ago`,
+    chipModel: (v) => `Model: ${v}`,
+    chipConv: (v) => `Session: ${v}`,
+    chipHour: (v) => `Hour: ${v}:00`,
+    activeNow: (rel) => `Active · ${rel}`,
+    idleNow: (rel) => `Idle · ${rel}`,
+    noReqs: 'No requests',
+    kpiTokSub: (c, i, o) => `Cache ${c} · New ${i} · Out ${o}`,
+    kpiReqSub: (d, e) => `Drops ${d} · Errors ${e}`,
+    kpiCpVal: (n) => `${n}`,
+    kpiCpSubAvg: (v) => `Avg trigger ${v}`,
+    kpiCpSubMax: (v) => `Peak occupancy ${v}`,
+    scopeModel: (m) => `Model: ${m}`,
+    scopeGlobal: 'Based on global usage & cache history',
+    advDesc: (a, fmt) => {
+      const p = [];
+      if (a.cpSampleCount > 0) p.push(`${a.cpSampleCount} historical CHECKPOINT compactions, avg trigger <b>${fmt(a.observedCeiling)}</b>`);
+      else p.push(`No CHECKPOINT yet (peak occupancy <b>${fmt(a.maxObserved)}</b>), using <b>${fmt(a.observedCeiling)}</b> as reference ceiling`);
+      if (a.nonCpDropCount > 0) p.push(`<b>${a.nonCpDropCount}</b> non-compaction cache drops (avg cold rewarm <b>${fmt(a.avgDropRewarm)}</b> tokens)`);
+      p.push(`Recommended to compact before <b>${fmt(a.recommendedCompact)}</b>.`);
+      return p.join('. ');
+    },
+    badgeAuto: (k) => `Auto · ${k}K`,
+    badgeNext: (k) => `Next Only · ${k}K`,
+    badgeLock: (k) => `Locked · ${k}K`,
+    threshSubAuto: 'Auto-calculated by active model & recent history; manual change applies to next compaction only',
+    noActiveConv: 'No active session in the last 15m',
+    recentConv: 'Recent session',
+    stateOff: 'Off',
+    stateSnoozed: (s) => `Snoozed ${s}s`,
+    stateCooldown: (s) => `Cooldown ${s}s`,
+    stateOver: 'Over Threshold',
+    stateWarn: 'Approaching',
+    stateHealthy: 'Healthy',
+    heroHint: (modeLbl, soft, ceil) => `${modeLbl} · Warning ${soft} · Ceiling ${ceil}`,
+    modeLblAuto: 'Auto Threshold',
+    modeLblNext: 'One-Time Manual',
+    modeLblLock: 'Locked Manual',
+    heroActionLine: (m) => `Action: ${m}`,
+    lastExec: (s) => `Last result: ${s}`,
+    alertText: (title, cur, th) => `Session "${title}" reached ${cur} (threshold ${th}). Compaction recommended.`,
+    toastBodyLive: (title, cur, th) => `Session <b>${title}</b> reached <b>${cur}</b> / <b>${th}</b>. Send <code>/compact</code> now?`,
+    toastBodyTest: (th) => `Preview: This toast appears when occupancy reaches <b>${th}</b>.`,
+    histTitle: 'Recent Triggers',
+    tagTest: '[Test]',
+    tagConfirm: '[Confirm]',
+    tagAuto: '[Auto]',
+    tipTotalTok: 'Total Tokens',
+    tipCacheRead: 'Cache Read',
+    tipNewIn: 'New Input',
+    tipReqCp: 'Reqs / Compacts',
+    tipHit: 'Hit Rate',
+    hmNoteHit: 'Heatmap shows Tokens · Click day for hourly',
+    hmNoteDef: 'Click any day to view hourly breakdown',
+    clearFilter: 'Clear filter',
+    modelCount: (n) => `${n} models`,
+    noModelData: 'No model data',
+    modelRowSub: (reqs, hit) => `${reqs} reqs · Hit ${hit}%`,
+    matchCount: (n) => `${n} matched`,
+    convCount: (n) => `${n} sessions`,
+    noConvMatch: 'No matching sessions',
+    convRowSub: (m, rel, hit, share) => `${m} · ${rel} · Hit ${hit}% · ${share}%`,
+    convClickSub: (id) => `ID ${id} · Click to inspect`,
+    pageRange: (s, e, tot) => tot > 0 ? `Showing ${s}–${e} of ${tot}` : '0 records',
+    noRecords: 'No records match current filters',
+    evErr: 'Error',
+    evCp: 'CHECKPOINT',
+    evDrop: 'Cache Drop',
+    evNormal: 'Normal',
+    toastSaved: 'Settings saved',
+    toastTriggered: 'Sent /compact',
+    toastBumped: 'Threshold bumped +20K for this turn',
+    toastTested: 'Test triggered',
+    toastCopied: 'Copied /compact',
+  },
+  zh: {
+    langAuto: '🌐 自动 (跟随系统)',
+    loading: '加载中…',
+    pickDateTitle: '选择分时图日期',
+    today: '今天',
+    weekdays: ['一', '二', '三', '四', '五', '六', '日'],
+    hmDays: { 0: '周一', 2: '周三', 4: '周五', 6: '周日' },
+    monthFmt: (y, m) => `${y}年 ${m}月`,
+    shortMonth: (m) => `${m}月`,
+    pause: '暂停',
+    resume: '继续',
+    settingsBtn: '压缩设置',
+    heroTag: '当前上下文',
+    thresholdShort: '阈值',
+    autoCompactSwitch: '自动压缩',
+    compactNowBtn: '立即压缩',
+    compactingBtn: '压缩中…',
+    confirmCompact: '确定压缩',
+    bump20K: '本次 +20K',
+    copyCmd: '复制 /compact',
+    kpiTokens: '总 Token',
+    kpiHit: '缓存命中率',
+    kpiReqs: '请求数',
+    kpiCompacts: '上下文压缩 (CHECKPOINT)',
+    tabTokens: 'Token',
+    tabReqs: '请求',
+    tabHit: '命中率',
+    tabCompacts: '压缩',
+    tabHourly: '24h 分时',
+    tabHeatmap: '53周热力图',
+    less: '少',
+    more: '多',
+    byModel: '按模型',
+    byConv: '按会话',
+    searchAllConvs: '搜索全部本地会话…',
+    logsTitle: '请求明细',
+    logAll: '全部',
+    logCp: '压缩',
+    logDrop: '缓存骤降',
+    logErr: '错误',
+    logSearchPh: '搜索会话 / 模型 / 详情…',
+    ctxAll: '全部占用',
+    ctx150: '高占用 (≥150K)',
+    ctx200: '极高占用 (≥200K)',
+    ctxLowHit: '低命中 (<70%)',
+    sortNewest: '最新优先',
+    sortCtx: '占用最高',
+    sortIn: '新输入最大',
+    sortHit: '命中率最低',
+    resetBtn: '重置',
+    collapseBtn: '收起',
+    expandBtn: '展开',
+    thTime: '时间',
+    thConv: '会话',
+    thModel: '模型',
+    thEvent: '事件',
+    thInCache: '新输入 / 缓存读',
+    thOut: '输出',
+    thHit: '命中率',
+    thCtx: '上下文占用',
+    page10: '10条/页',
+    page20: '20条/页',
+    page50: '50条/页',
+    prevPage: '上一页',
+    nextPage: '下一页',
+    drawerTitle: '智能阈值与自动压缩',
+    refTitle: '历史参考区间',
+    refClickHint: '点推荐值快速填入',
+    softWarnLbl: '软预警线',
+    recThreshLbl: '推荐临界值',
+    ceilLbl: '实测上限',
+    threshSecTitle: '压缩阈值 (K tokens)',
+    resetAutoBtn: '恢复自动',
+    lockManualLbl: '锁定手动值（否则压缩一次后恢复自动）',
+    behaviorTitle: '到达阈值后的行为',
+    modeOptUiSend: '全自动静默压缩（前台空闲触发 + Hook 护航）',
+    modeOptHookGuard: '仅内部 Hook 护航（100% 不碰窗口）',
+    modeOptToast: '小 Toast 提醒（点确定立马压缩）',
+    modeOptHookBlock: 'Hook 硬拦截（到阈值暂停等 /compact）',
+    modeOptNotify: '仅强提醒 + 复制 /compact',
+    timingTitle: '空闲等待与冷却时间',
+    idleWaitLbl: '空闲等待 (秒)',
+    cooldownLbl: '最小冷却 (秒)',
+    testBtn: '测试触发',
+    testingBtn: '测试中…',
+    closeBtn: '关闭',
+    saveBtn: '保存设置',
+    toastTitle: '已到达压缩阈值',
+    toastConfirmBtn: '确定压缩 (/compact)',
+    toastDismissBtn: '暂不',
+    modeShort: {
+      ui_send: '前台空闲静默压缩 + Hook 护航',
+      toast_confirm: '小 Toast 提醒',
+      hook_guard: '仅内部 Hook 护航',
+      hook_block: 'Hook 硬拦截',
+      notify: '仅提醒 + 复制命令',
+    },
+    modeHints: {
+      ui_send: '同时启用内部 Hook 收尾护航，且仅在 Antigravity 处于前台、键鼠空闲时静默发送 /compact（绝不跨软件抢窗口焦点）',
+      toast_confirm: '到达阈值后在桌面与面板右下角弹出轻量 Toast，点击确定立即压缩',
+      hook_guard: '100% 不碰任何窗口：超阈值时通过 PreInvocation Hook 在内部引导模型收尾控量',
+      hook_block: '超阈值时暂停下一轮调用，直到你发送 /compact 后放行',
+      notify: '复制 /compact 到剪贴板并提示音提醒，不自动操作窗口',
+    },
+    relSec: (n) => `${n}秒前`,
+    relMin: (n) => `${n}分钟前`,
+    relHr: (n) => `${n}小时前`,
+    relDay: (n) => `${n}天前`,
+    chipModel: (v) => `模型: ${v}`,
+    chipConv: (v) => `会话: ${v}`,
+    chipHour: (v) => `时段: ${v}:00`,
+    activeNow: (rel) => `活跃中 · ${rel}`,
+    idleNow: (rel) => `空闲 · ${rel}`,
+    noReqs: '暂无请求',
+    kpiTokSub: (c, i, o) => `缓存 ${c} · 新输入 ${i} · 输出 ${o}`,
+    kpiReqSub: (d, e) => `缓存骤降 ${d} · 错误 ${e}`,
+    kpiCpVal: (n) => `${n} 次`,
+    kpiCpSubAvg: (v) => `平均触发点 ${v}`,
+    kpiCpSubMax: (v) => `历史最高占用 ${v}`,
+    scopeModel: (m) => `模型: ${m}`,
+    scopeGlobal: '基于历史用量与缓存行为分析',
+    advDesc: (a, fmt) => {
+      const p = [];
+      if (a.cpSampleCount > 0) p.push(`历史共 ${a.cpSampleCount} 次自动 CHECKPOINT 压缩，平均触发点 <b>${fmt(a.observedCeiling)}</b>`);
+      else p.push(`暂未触发过 CHECKPOINT（最高上下文 <b>${fmt(a.maxObserved)}</b>），以 <b>${fmt(a.observedCeiling)}</b> 作为上限参考`);
+      if (a.nonCpDropCount > 0) p.push(`非压缩骤降 <b>${a.nonCpDropCount}</b> 次，平均冷重算 <b>${fmt(a.avgDropRewarm)}</b> tokens`);
+      p.push(`建议在 <b>${fmt(a.recommendedCompact)}</b> 前主动压缩。`);
+      return p.join('；');
+    },
+    badgeAuto: (k) => `自动 · ${k}K`,
+    badgeNext: (k) => `下次手动 · ${k}K`,
+    badgeLock: (k) => `锁定手动 · ${k}K`,
+    threshSubAuto: '按当前模型与近期记录自动计算；手动调值仅生效于下一次压缩',
+    noActiveConv: '近 15 分钟暂无活跃会话',
+    recentConv: '最近会话',
+    stateOff: '未开启',
+    stateSnoozed: (s) => `已延后 ${s}s`,
+    stateCooldown: (s) => `冷却中 ${s}s`,
+    stateOver: '已超阈值',
+    stateWarn: '接近阈值',
+    stateHealthy: '健康',
+    heroHint: (modeLbl, soft, ceil) => `${modeLbl} · 软预警 ${soft} · 实测上限 ${ceil}`,
+    modeLblAuto: '自动阈值',
+    modeLblNext: '下次手动阈值',
+    modeLblLock: '锁定手动阈值',
+    heroActionLine: (m) => `到达阈值：${m}`,
+    lastExec: (s) => `最近执行：${s}`,
+    alertText: (title, cur, th) => `会话「${title}」上下文占用 ${cur} 已达阈值 ${th}，建议立即压缩。`,
+    toastBodyLive: (title, cur, th) => `会话 <b>${title}</b> 当前占用 <b>${cur}</b> 已达阈值 <b>${th}</b>，是否立即发送 <code>/compact</code>？`,
+    toastBodyTest: (th) => `预览模式：到达阈值 <b>${th}</b> 后将弹出此 Toast，点击「确定压缩」立即压缩。`,
+    histTitle: '最近触发记录',
+    tagTest: '[测试]',
+    tagConfirm: '[确认]',
+    tagAuto: '[自动]',
+    tipTotalTok: 'Token 合计',
+    tipCacheRead: '缓存读取',
+    tipNewIn: '新输入',
+    tipReqCp: '请求 / 压缩',
+    tipHit: '命中率',
+    hmNoteHit: '热力图按 Token 展示 · 点格子跳当天',
+    hmNoteDef: '点格子跳转当天分时',
+    clearFilter: '清除筛选',
+    modelCount: (n) => `${n} 个模型`,
+    noModelData: '暂无模型数据',
+    modelRowSub: (reqs, hit) => `${reqs} 次请求 · 命中率 ${hit}%`,
+    matchCount: (n) => `匹配 ${n} 个`,
+    convCount: (n) => `共 ${n} 会话`,
+    noConvMatch: '无匹配会话',
+    convRowSub: (m, rel, hit, share) => `${m} · ${rel} · 命中 ${hit}% · 占比 ${share}%`,
+    convClickSub: (id) => `ID ${id} · 点击查看此会话`,
+    pageRange: (s, e, tot) => tot > 0 ? `显示 ${s}–${e} / 共 ${tot} 条` : '共 0 条记录',
+    noRecords: '当前筛选下暂无记录',
+    evErr: '错误',
+    evCp: 'CHECKPOINT 压缩',
+    evDrop: '缓存骤降',
+    evNormal: '正常',
+    toastSaved: '设置已保存',
+    toastTriggered: '已触发 /compact',
+    toastBumped: '本次阈值已提高 20K',
+    toastTested: '已触发测试',
+    toastCopied: '已复制 /compact',
+  },
+  ja: {
+    langAuto: '🌐 自動 (システム言語)',
+    loading: '読み込み中…',
+    pickDateTitle: '日付を選択',
+    today: '今日',
+    weekdays: ['月', '火', '水', '木', '金', '土', '日'],
+    hmDays: { 0: '月', 2: '水', 4: '金', 6: '日' },
+    monthFmt: (y, m) => `${y}年 ${m}月`,
+    shortMonth: (m) => `${m}月`,
+    pause: '一時停止',
+    resume: '再開',
+    settingsBtn: '圧縮設定',
+    heroTag: '現在のコンテキスト',
+    thresholdShort: 'しきい値',
+    autoCompactSwitch: '自動圧縮',
+    compactNowBtn: '今すぐ圧縮',
+    compactingBtn: '圧縮中…',
+    confirmCompact: '今すぐ圧縮',
+    bump20K: '今回 +20K',
+    copyCmd: '/compact をコピー',
+    kpiTokens: '総トークン',
+    kpiHit: 'キャッシュヒット率',
+    kpiReqs: 'リクエスト数',
+    kpiCompacts: 'コンテキスト圧縮 (CHECKPOINT)',
+    tabTokens: 'トークン',
+    tabReqs: 'リクエスト',
+    tabHit: 'ヒット率',
+    tabCompacts: '圧縮',
+    tabHourly: '24時間推移',
+    tabHeatmap: '53週ヒートマップ',
+    less: '少',
+    more: '多',
+    byModel: 'モデル別',
+    byConv: 'セッション別',
+    searchAllConvs: '全ローカルセッションを検索…',
+    logsTitle: 'リクエスト明細',
+    logAll: 'すべて',
+    logCp: '圧縮',
+    logDrop: 'キャッシュ急落',
+    logErr: 'エラー',
+    logSearchPh: 'セッション / モデルを検索…',
+    ctxAll: 'すべての使用量',
+    ctx150: '高使用量 (≥150K)',
+    ctx200: '超高使用量 (≥200K)',
+    ctxLowHit: '低ヒット率 (<70%)',
+    sortNewest: '新しい順',
+    sortCtx: '使用量順',
+    sortIn: '新規入力順',
+    sortHit: '低ヒット率順',
+    resetBtn: 'リセット',
+    collapseBtn: '折りたたむ',
+    expandBtn: '展開',
+    thTime: '時刻',
+    thConv: 'セッション',
+    thModel: 'モデル',
+    thEvent: 'イベント',
+    thInCache: '新規入力 / キャッシュ読取',
+    thOut: '出力',
+    thHit: 'ヒット率',
+    thCtx: 'コンテキスト使用量',
+    page10: '10件/ページ',
+    page20: '20件/ページ',
+    page50: '50件/ページ',
+    prevPage: '前へ',
+    nextPage: '次へ',
+    drawerTitle: 'スマートしきい値と自動圧縮',
+    refTitle: '履歴リファレンス',
+    refClickHint: '推奨値をクリックして適用',
+    softWarnLbl: '早期警告ライン',
+    recThreshLbl: '推奨しきい値',
+    ceilLbl: '実測上限',
+    threshSecTitle: '圧縮しきい値 (K tokens)',
+    resetAutoBtn: '自動に戻す',
+    lockManualLbl: '手動値をロック（未選択時は次回圧縮後に自動へ復帰）',
+    behaviorTitle: 'しきい値到達時の動作',
+    modeOptUiSend: 'サイレント自動圧縮（前面アイドル時 + Hook ガード）',
+    modeOptHookGuard: '内部 Hook ガードのみ（ウィンドウ操作なし）',
+    modeOptToast: 'トースト確認通知（クリックで即時圧縮）',
+    modeOptHookBlock: 'Hook ハードブロック（/compact まで一時停止）',
+    modeOptNotify: '通知 + /compact コピーのみ',
+    timingTitle: 'アイドル待機とクールダウン',
+    idleWaitLbl: 'アイドル待機 (秒)',
+    cooldownLbl: '最小クールダウン (秒)',
+    testBtn: 'テスト実行',
+    testingBtn: 'テスト中…',
+    closeBtn: '閉じる',
+    saveBtn: '保存',
+    toastTitle: '圧縮しきい値に到達',
+    toastConfirmBtn: '今すぐ圧縮 (/compact)',
+    toastDismissBtn: '後で',
+    modeShort: {
+      ui_send: '前面アイドル自動圧縮 + Hook ガード',
+      toast_confirm: 'トースト確認',
+      hook_guard: '内部 Hook ガード',
+      hook_block: 'Hook ハードブロック',
+      notify: '通知 + コピー',
+    },
+    modeHints: {
+      ui_send: '内部 Hook ガードを有効化し、Antigravity が前面かつキーボード/マウスがアイドル時のみ /compact を送信します（フォーカスを奪いません）。',
+      toast_confirm: 'しきい値到達時に画面右下へ軽量トーストを表示します。',
+      hook_guard: 'ウィンドウ操作を一切行わず、PreInvocation Hook でモデルに作業のまとめを促します。',
+      hook_block: 'しきい値超過時に次のモデル呼び出しを一時停止し、/compact 実行後に再開します。',
+      notify: '/compact をクリップボードへコピーして通知します。',
+    },
+    relSec: (n) => `${n}秒前`,
+    relMin: (n) => `${n}分前`,
+    relHr: (n) => `${n}時間前`,
+    relDay: (n) => `${n}日前`,
+    chipModel: (v) => `モデル: ${v}`,
+    chipConv: (v) => `セッション: ${v}`,
+    chipHour: (v) => `時間帯: ${v}:00`,
+    activeNow: (rel) => `アクティブ · ${rel}`,
+    idleNow: (rel) => `アイドル · ${rel}`,
+    noReqs: 'リクエストなし',
+    kpiTokSub: (c, i, o) => `キャッシュ ${c} · 新規 ${i} · 出力 ${o}`,
+    kpiReqSub: (d, e) => `急落 ${d} · エラー ${e}`,
+    kpiCpVal: (n) => `${n} 回`,
+    kpiCpSubAvg: (v) => `平均発動点 ${v}`,
+    kpiCpSubMax: (v) => `最大使用量 ${v}`,
+    scopeModel: (m) => `モデル: ${m}`,
+    scopeGlobal: '全体の使用量とキャッシュ履歴に基づく分析',
+    advDesc: (a, fmt) => {
+      const p = [];
+      if (a.cpSampleCount > 0) p.push(`過去の自動 CHECKPOINT 圧縮 ${a.cpSampleCount} 回、平均発動点 <b>${fmt(a.observedCeiling)}</b>`);
+      else p.push(`CHECKPOINT 未発生（最大使用量 <b>${fmt(a.maxObserved)}</b>）、上限参考値 <b>${fmt(a.observedCeiling)}</b>`);
+      if (a.nonCpDropCount > 0) p.push(`非圧縮キャッシュ急落 <b>${a.nonCpDropCount}</b> 回（平均再計算 <b>${fmt(a.avgDropRewarm)}</b> tokens）`);
+      p.push(`<b>${fmt(a.recommendedCompact)}</b> 到達前の圧縮を推奨します。`);
+      return p.join('。');
+    },
+    badgeAuto: (k) => `自動 · ${k}K`,
+    badgeNext: (k) => `次回のみ · ${k}K`,
+    badgeLock: (k) => `固定 · ${k}K`,
+    threshSubAuto: '現在のモデルと直近の履歴から自動算出（手動変更は次回圧縮のみ適用）',
+    noActiveConv: '直近15分間のアクティブセッションなし',
+    recentConv: '直近のセッション',
+    stateOff: 'オフ',
+    stateSnoozed: (s) => `スヌーズ ${s}s`,
+    stateCooldown: (s) => `クールダウン ${s}s`,
+    stateOver: 'しきい値超過',
+    stateWarn: '警告域',
+    stateHealthy: '良好',
+    heroHint: (modeLbl, soft, ceil) => `${modeLbl} · 早期警告 ${soft} · 実測上限 ${ceil}`,
+    modeLblAuto: '自動しきい値',
+    modeLblNext: '次回手動しきい値',
+    modeLblLock: '固定しきい値',
+    heroActionLine: (m) => `動作：${m}`,
+    lastExec: (s) => `直近の結果：${s}`,
+    alertText: (title, cur, th) => `セッション「${title}」の使用量 ${cur} がしきい値 ${th} に達しました。`,
+    toastBodyLive: (title, cur, th) => `セッション <b>${title}</b> の使用量 <b>${cur}</b> がしきい値 <b>${th}</b> に達しました。今すぐ <code>/compact</code> を送信しますか？`,
+    toastBodyTest: (th) => `プレビュー：使用量が <b>${th}</b> に達するとこのトーストが表示されます。`,
+    histTitle: '最近のトリガー履歴',
+    tagTest: '[テスト]',
+    tagConfirm: '[確認]',
+    tagAuto: '[自動]',
+    tipTotalTok: '合計トークン',
+    tipCacheRead: 'キャッシュ読取',
+    tipNewIn: '新規入力',
+    tipReqCp: 'リクエスト / 圧縮',
+    tipHit: 'ヒット率',
+    hmNoteHit: 'トークン量で表示 · 日付クリックで時間別へ',
+    hmNoteDef: '日付をクリックして24時間推移を表示',
+    clearFilter: 'フィルタ解除',
+    modelCount: (n) => `${n} モデル`,
+    noModelData: 'モデルデータなし',
+    modelRowSub: (reqs, hit) => `${reqs} リクエスト · ヒット率 ${hit}%`,
+    matchCount: (n) => `${n} 件一致`,
+    convCount: (n) => `全 ${n} セッション`,
+    noConvMatch: '一致するセッションなし',
+    convRowSub: (m, rel, hit, share) => `${m} · ${rel} · ヒット ${hit}% · ${share}%`,
+    convClickSub: (id) => `ID ${id} · クリックして表示`,
+    pageRange: (s, e, tot) => tot > 0 ? `${s}–${e} / 全 ${tot} 件` : '0 件',
+    noRecords: '条件に一致するレコードがありません',
+    evErr: 'エラー',
+    evCp: 'CHECKPOINT 圧縮',
+    evDrop: 'キャッシュ急落',
+    evNormal: '通常',
+    toastSaved: '設定を保存しました',
+    toastTriggered: '/compact を送信しました',
+    toastBumped: '今回のしきい値を +20K 延長しました',
+    toastTested: 'テストを実行しました',
+    toastCopied: '/compact をコピーしました',
+  },
+  fr: {
+    langAuto: '🌐 Auto (Système)',
+    loading: 'Chargement…',
+    pickDateTitle: 'Choisir une date',
+    today: "Aujourd'hui",
+    weekdays: ['Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa', 'Di'],
+    hmDays: { 0: 'Lun', 2: 'Mer', 4: 'Ven', 6: 'Dim' },
+    monthFmt: (y, m) => `${String(m).padStart(2, '0')}/${y}`,
+    shortMonth: (m) => ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Aoû','Sep','Oct','Nov','Déc'][m - 1],
+    pause: 'Pause',
+    resume: 'Reprendre',
+    settingsBtn: 'Paramètres',
+    heroTag: 'Contexte actif',
+    thresholdShort: 'Seuil',
+    autoCompactSwitch: 'Auto-Compact',
+    compactNowBtn: 'Compresser',
+    compactingBtn: 'Compression…',
+    confirmCompact: 'Compresser',
+    bump20K: '+20K cette fois',
+    copyCmd: 'Copier /compact',
+    kpiTokens: 'Tokens totaux',
+    kpiHit: 'Taux de cache',
+    kpiReqs: 'Requêtes',
+    kpiCompacts: 'Compressions (CHECKPOINT)',
+    tabTokens: 'Tokens',
+    tabReqs: 'Requêtes',
+    tabHit: 'Taux cache',
+    tabCompacts: 'Compressions',
+    tabHourly: 'Vue 24h',
+    tabHeatmap: 'Heatmap 53 sem.',
+    less: 'Moins',
+    more: 'Plus',
+    byModel: 'Par modèle',
+    byConv: 'Par session',
+    searchAllConvs: 'Rechercher une session…',
+    logsTitle: 'Journal des requêtes',
+    logAll: 'Tout',
+    logCp: 'Compressions',
+    logDrop: 'Chutes cache',
+    logErr: 'Erreurs',
+    logSearchPh: 'Filtrer session / modèle…',
+    ctxAll: 'Toute occupation',
+    ctx150: 'Élevée (≥150K)',
+    ctx200: 'Très élevée (≥200K)',
+    ctxLowHit: 'Cache faible (<70%)',
+    sortNewest: 'Plus récents',
+    sortCtx: 'Occupation max',
+    sortIn: 'Nouvel input max',
+    sortHit: 'Cache le plus bas',
+    resetBtn: 'Réinitialiser',
+    collapseBtn: 'Réduire',
+    expandBtn: 'Développer',
+    thTime: 'Heure',
+    thConv: 'Session',
+    thModel: 'Modèle',
+    thEvent: 'Événement',
+    thInCache: 'Nouvel In / Cache',
+    thOut: 'Sortie',
+    thHit: 'Taux cache',
+    thCtx: 'Occupation contexte',
+    page10: '10 / page',
+    page20: '20 / page',
+    page50: '50 / page',
+    prevPage: 'Préc.',
+    nextPage: 'Suiv.',
+    drawerTitle: 'Seuil intelligent & Auto-Compact',
+    refTitle: 'Repères historiques',
+    refClickHint: 'Cliquez sur recommandé pour appliquer',
+    softWarnLbl: 'Alerte précoce',
+    recThreshLbl: 'Recommandé',
+    ceilLbl: 'Plafond observé',
+    threshSecTitle: 'Seuil de compression (K tokens)',
+    resetAutoBtn: 'Mode auto',
+    lockManualLbl: 'Verrouiller la valeur manuelle',
+    behaviorTitle: 'Action au franchissement du seuil',
+    modeOptUiSend: 'Auto-Compact silencieux (1er plan inactif + Garde Hook)',
+    modeOptHookGuard: 'Garde Hook interne seule (zéro action fenêtre)',
+    modeOptToast: 'Confirmation Toast sur le bureau',
+    modeOptHookBlock: 'Blocage Hook strict (pause avant /compact)',
+    modeOptNotify: 'Notification + copie de /compact',
+    timingTitle: 'Inactivité & Délai de recharge',
+    idleWaitLbl: 'Inactivité (sec)',
+    cooldownLbl: 'Recharge (sec)',
+    testBtn: 'Tester',
+    testingBtn: 'Test…',
+    closeBtn: 'Fermer',
+    saveBtn: 'Enregistrer',
+    toastTitle: 'Seuil de compression atteint',
+    toastConfirmBtn: 'Compresser (/compact)',
+    toastDismissBtn: 'Plus tard',
+    modeShort: {
+      ui_send: 'Silencieux 1er plan + Garde Hook',
+      toast_confirm: 'Confirmation Toast',
+      hook_guard: 'Garde Hook interne',
+      hook_block: 'Blocage Hook',
+      notify: 'Notification seule',
+    },
+    modeHints: {
+      ui_send: "Active la garde Hook interne et envoie /compact uniquement lorsqu'Antigravity est au premier plan et le clavier/souris inactifs.",
+      toast_confirm: 'Affiche une notification discrète en bas à droite sans voler le focus.',
+      hook_guard: "100 % interne : guide le modèle via le hook PreInvocation sans toucher aux fenêtres.",
+      hook_block: "Met en pause l'invocation suivante jusqu'à l'exécution de /compact.",
+      notify: 'Copie /compact dans le presse-papiers avec un signal sonore.',
+    },
+    relSec: (n) => `il y a ${n}s`,
+    relMin: (n) => `il y a ${n}m`,
+    relHr: (n) => `il y a ${n}h`,
+    relDay: (n) => `il y a ${n}j`,
+    chipModel: (v) => `Modèle : ${v}`,
+    chipConv: (v) => `Session : ${v}`,
+    chipHour: (v) => `Heure : ${v}:00`,
+    activeNow: (rel) => `Actif · ${rel}`,
+    idleNow: (rel) => `Inactif · ${rel}`,
+    noReqs: 'Aucune requête',
+    kpiTokSub: (c, i, o) => `Cache ${c} · Nouv. ${i} · Sortie ${o}`,
+    kpiReqSub: (d, e) => `Chutes ${d} · Erreurs ${e}`,
+    kpiCpVal: (n) => `${n}`,
+    kpiCpSubAvg: (v) => `Seuil moyen ${v}`,
+    kpiCpSubMax: (v) => `Pic observé ${v}`,
+    scopeModel: (m) => `Modèle : ${m}`,
+    scopeGlobal: "Basé sur l'historique global d'utilisation et de cache",
+    advDesc: (a, fmt) => {
+      const p = [];
+      if (a.cpSampleCount > 0) p.push(`${a.cpSampleCount} compressions CHECKPOINT, déclenchement moyen à <b>${fmt(a.observedCeiling)}</b>`);
+      else p.push(`Aucun CHECKPOINT (pic <b>${fmt(a.maxObserved)}</b>), plafond de référence <b>${fmt(a.observedCeiling)}</b>`);
+      if (a.nonCpDropCount > 0) p.push(`<b>${a.nonCpDropCount}</b> chutes de cache hors compression (recalcul moyen <b>${fmt(a.avgDropRewarm)}</b> tokens)`);
+      p.push(`Compression recommandée avant <b>${fmt(a.recommendedCompact)}</b>.`);
+      return p.join('. ');
+    },
+    badgeAuto: (k) => `Auto · ${k}K`,
+    badgeNext: (k) => `Prochain · ${k}K`,
+    badgeLock: (k) => `Verrouillé · ${k}K`,
+    threshSubAuto: 'Calculé automatiquement selon le modèle actif ; un réglage manuel vaut pour la prochaine compression',
+    noActiveConv: 'Aucune session active (15 dernières min)',
+    recentConv: 'Session récente',
+    stateOff: 'Désactivé',
+    stateSnoozed: (s) => `Différé ${s}s`,
+    stateCooldown: (s) => `Recharge ${s}s`,
+    stateOver: 'Seuil dépassé',
+    stateWarn: 'Proche du seuil',
+    stateHealthy: 'Sain',
+    heroHint: (modeLbl, soft, ceil) => `${modeLbl} · Alerte ${soft} · Plafond ${ceil}`,
+    modeLblAuto: 'Seuil auto',
+    modeLblNext: 'Seuil manuel unique',
+    modeLblLock: 'Seuil verrouillé',
+    heroActionLine: (m) => `Action : ${m}`,
+    lastExec: (s) => `Dernier résultat : ${s}`,
+    alertText: (title, cur, th) => `La session « ${title} » a atteint ${cur} (seuil ${th}). Compression recommandée.`,
+    toastBodyLive: (title, cur, th) => `La session <b>${title}</b> a atteint <b>${cur}</b> / <b>${th}</b>. Envoyer <code>/compact</code> ?`,
+    toastBodyTest: (th) => `Aperçu : cette notification apparaît lorsque l'occupation atteint <b>${th}</b>.`,
+    histTitle: 'Déclenchements récents',
+    tagTest: '[Test]',
+    tagConfirm: '[Confirmé]',
+    tagAuto: '[Auto]',
+    tipTotalTok: 'Tokens totaux',
+    tipCacheRead: 'Lecture cache',
+    tipNewIn: 'Nouvel input',
+    tipReqCp: 'Req. / Comp.',
+    tipHit: 'Taux cache',
+    hmNoteHit: 'Heatmap par Tokens · Cliquez sur un jour',
+    hmNoteDef: 'Cliquez sur un jour pour la vue 24h',
+    clearFilter: 'Effacer',
+    modelCount: (n) => `${n} modèles`,
+    noModelData: 'Aucune donnée modèle',
+    modelRowSub: (reqs, hit) => `${reqs} req. · Cache ${hit}%`,
+    matchCount: (n) => `${n} trouvés`,
+    convCount: (n) => `${n} sessions`,
+    noConvMatch: 'Aucune session trouvée',
+    convRowSub: (m, rel, hit, share) => `${m} · ${rel} · Cache ${hit}% · ${share}%`,
+    convClickSub: (id) => `ID ${id} · Cliquer pour filtrer`,
+    pageRange: (s, e, tot) => tot > 0 ? `Affichage ${s}–${e} sur ${tot}` : '0 enregistrement',
+    noRecords: 'Aucun enregistrement pour ce filtre',
+    evErr: 'Erreur',
+    evCp: 'CHECKPOINT',
+    evDrop: 'Chute cache',
+    evNormal: 'Normal',
+    toastSaved: 'Paramètres enregistrés',
+    toastTriggered: '/compact envoyé',
+    toastBumped: 'Seuil augmenté de +20K',
+    toastTested: 'Test déclenché',
+    toastCopied: '/compact copié',
+  },
+  de: {
+    langAuto: '🌐 Auto (System)',
+    loading: 'Laden…',
+    pickDateTitle: 'Datum wählen',
+    today: 'Heute',
+    weekdays: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'],
+    hmDays: { 0: 'Mo', 2: 'Mi', 4: 'Fr', 6: 'So' },
+    monthFmt: (y, m) => `${String(m).padStart(2, '0')}.${y}`,
+    shortMonth: (m) => ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'][m - 1],
+    pause: 'Pause',
+    resume: 'Weiter',
+    settingsBtn: 'Einstellungen',
+    heroTag: 'Aktiver Kontext',
+    thresholdShort: 'Schwelle',
+    autoCompactSwitch: 'Auto-Compact',
+    compactNowBtn: 'Komprimieren',
+    compactingBtn: 'Komprimiere…',
+    confirmCompact: 'Komprimieren',
+    bump20K: 'Einmalig +20K',
+    copyCmd: '/compact kopieren',
+    kpiTokens: 'Gesamt-Tokens',
+    kpiHit: 'Cache-Trefferquote',
+    kpiReqs: 'Anfragen',
+    kpiCompacts: 'Komprimierungen (CHECKPOINT)',
+    tabTokens: 'Tokens',
+    tabReqs: 'Anfragen',
+    tabHit: 'Trefferquote',
+    tabCompacts: 'Komprimierung',
+    tabHourly: '24h-Ansicht',
+    tabHeatmap: '53-Wochen-Heatmap',
+    less: 'Weniger',
+    more: 'Mehr',
+    byModel: 'Nach Modell',
+    byConv: 'Nach Sitzung',
+    searchAllConvs: 'Alle lokalen Sitzungen durchsuchen…',
+    logsTitle: 'Anfrageprotokoll',
+    logAll: 'Alle',
+    logCp: 'Komprimiert',
+    logDrop: 'Cache-Einbruch',
+    logErr: 'Fehler',
+    logSearchPh: 'Sitzung / Modell suchen…',
+    ctxAll: 'Alle Auslastungen',
+    ctx150: 'Hoch (≥150K)',
+    ctx200: 'Sehr hoch (≥200K)',
+    ctxLowHit: 'Niedriger Cache (<70%)',
+    sortNewest: 'Neueste zuerst',
+    sortCtx: 'Höchste Auslastung',
+    sortIn: 'Größter neuer Input',
+    sortHit: 'Niedrigster Cache',
+    resetBtn: 'Zurücksetzen',
+    collapseBtn: 'Einklappen',
+    expandBtn: 'Ausklappen',
+    thTime: 'Zeit',
+    thConv: 'Sitzung',
+    thModel: 'Modell',
+    thEvent: 'Ereignis',
+    thInCache: 'Neuer In / Cache',
+    thOut: 'Output',
+    thHit: 'Trefferquote',
+    thCtx: 'Kontextauslastung',
+    page10: '10 / Seite',
+    page20: '20 / Seite',
+    page50: '50 / Seite',
+    prevPage: 'Zurück',
+    nextPage: 'Weiter',
+    drawerTitle: 'Smarte Schwelle & Auto-Compact',
+    refTitle: 'Historische Referenzwerte',
+    refClickHint: 'Empfehlung anklicken zum Übernehmen',
+    softWarnLbl: 'Frühwarnlinie',
+    recThreshLbl: 'Empfohlen',
+    ceilLbl: 'Gemessenes Limit',
+    threshSecTitle: 'Schwellenwert (K Tokens)',
+    resetAutoBtn: 'Auto-Modus',
+    lockManualLbl: 'Manuellen Wert sperren (sonst nur für nächste Komprimierung)',
+    behaviorTitle: 'Verhalten bei Schwellenwert',
+    modeOptUiSend: 'Stilles Auto-Compact (Vordergrund-Leerlauf + Hook-Schutz)',
+    modeOptHookGuard: 'Nur interner Hook-Schutz (100 % ohne Fensterzugriff)',
+    modeOptToast: 'Desktop-Toast-Bestätigung',
+    modeOptHookBlock: 'Hook-Blockade (Pause bis /compact)',
+    modeOptNotify: 'Nur Hinweis + /compact kopieren',
+    timingTitle: 'Leerlauf & Abklingzeit',
+    idleWaitLbl: 'Leerlauf (Sek.)',
+    cooldownLbl: 'Abklingzeit (Sek.)',
+    testBtn: 'Test auslösen',
+    testingBtn: 'Teste…',
+    closeBtn: 'Schließen',
+    saveBtn: 'Speichern',
+    toastTitle: 'Schwellenwert erreicht',
+    toastConfirmBtn: 'Komprimieren (/compact)',
+    toastDismissBtn: 'Später',
+    modeShort: {
+      ui_send: 'Stilles Vordergrund-Compact + Hook-Schutz',
+      toast_confirm: 'Toast-Bestätigung',
+      hook_guard: 'Interner Hook-Schutz',
+      hook_block: 'Hook-Blockade',
+      notify: 'Hinweis + Kopieren',
+    },
+    modeHints: {
+      ui_send: 'Aktiviert den internen Hook-Schutz und sendet /compact nur, wenn Antigravity im Vordergrund ist und Tastatur/Maus ruhen (kein Fokusverlust).',
+      toast_confirm: 'Zeigt unten rechts einen unaufdringlichen Toast ohne Fokusverlust.',
+      hook_guard: '100 % intern: weist das Modell per PreInvocation-Hook an, den Schritt sauber abzuschließen.',
+      hook_block: 'Pausiert den nächsten Aufruf nach Überschreiten der Schwelle bis /compact.',
+      notify: 'Kopiert /compact mit Signalton in die Zwischenablage.',
+    },
+    relSec: (n) => `vor ${n}s`,
+    relMin: (n) => `vor ${n}m`,
+    relHr: (n) => `vor ${n}h`,
+    relDay: (n) => `vor ${n}T`,
+    chipModel: (v) => `Modell: ${v}`,
+    chipConv: (v) => `Sitzung: ${v}`,
+    chipHour: (v) => `Stunde: ${v}:00`,
+    activeNow: (rel) => `Aktiv · ${rel}`,
+    idleNow: (rel) => `Leerlauf · ${rel}`,
+    noReqs: 'Keine Anfragen',
+    kpiTokSub: (c, i, o) => `Cache ${c} · Neu ${i} · Out ${o}`,
+    kpiReqSub: (d, e) => `Einbrüche ${d} · Fehler ${e}`,
+    kpiCpVal: (n) => `${n}`,
+    kpiCpSubAvg: (v) => `Ø Auslösung ${v}`,
+    kpiCpSubMax: (v) => `Spitzenwert ${v}`,
+    scopeModel: (m) => `Modell: ${m}`,
+    scopeGlobal: 'Basierend auf globaler Nutzungs- und Cache-Historie',
+    advDesc: (a, fmt) => {
+      const p = [];
+      if (a.cpSampleCount > 0) p.push(`${a.cpSampleCount} automatische CHECKPOINT-Komprimierungen, Ø Auslösung bei <b>${fmt(a.observedCeiling)}</b>`);
+      else p.push(`Noch kein CHECKPOINT (Spitze <b>${fmt(a.maxObserved)}</b>), Referenzlimit <b>${fmt(a.observedCeiling)}</b>`);
+      if (a.nonCpDropCount > 0) p.push(`<b>${a.nonCpDropCount}</b> Cache-Einbrüche ohne Komprimierung (Ø Neuberechnung <b>${fmt(a.avgDropRewarm)}</b> Tokens)`);
+      p.push(`Aktive Komprimierung vor <b>${fmt(a.recommendedCompact)}</b> empfohlen.`);
+      return p.join('. ');
+    },
+    badgeAuto: (k) => `Auto · ${k}K`,
+    badgeNext: (k) => `Einmalig · ${k}K`,
+    badgeLock: (k) => `Gesperrt · ${k}K`,
+    threshSubAuto: 'Automatisch nach aktivem Modell berechnet; manuelle Änderung gilt einmalig',
+    noActiveConv: 'Keine aktive Sitzung (letzte 15 Min.)',
+    recentConv: 'Letzte Sitzung',
+    stateOff: 'Aus',
+    stateSnoozed: (s) => `Verschoben ${s}s`,
+    stateCooldown: (s) => `Abklingzeit ${s}s`,
+    stateOver: 'Überschritten',
+    stateWarn: 'Vorwarnung',
+    stateHealthy: 'Gesund',
+    heroHint: (modeLbl, soft, ceil) => `${modeLbl} · Warnung ${soft} · Limit ${ceil}`,
+    modeLblAuto: 'Auto-Schwelle',
+    modeLblNext: 'Einmalig manuell',
+    modeLblLock: 'Manuell gesperrt',
+    heroActionLine: (m) => `Modus: ${m}`,
+    lastExec: (s) => `Letztes Ergebnis: ${s}`,
+    alertText: (title, cur, th) => `Sitzung „${title}“ hat ${cur} erreicht (Schwelle ${th}). Komprimierung empfohlen.`,
+    toastBodyLive: (title, cur, th) => `Sitzung <b>${title}</b> hat <b>${cur}</b> / <b>${th}</b> erreicht. Jetzt <code>/compact</code> senden?`,
+    toastBodyTest: (th) => `Vorschau: Dieser Toast erscheint bei Erreichen von <b>${th}</b>.`,
+    histTitle: 'Letzte Auslösungen',
+    tagTest: '[Test]',
+    tagConfirm: '[Bestätigt]',
+    tagAuto: '[Auto]',
+    tipTotalTok: 'Tokens gesamt',
+    tipCacheRead: 'Cache-Lesen',
+    tipNewIn: 'Neuer Input',
+    tipReqCp: 'Anfr. / Komp.',
+    tipHit: 'Trefferquote',
+    hmNoteHit: 'Heatmap nach Tokens · Tag anklicken für 24h',
+    hmNoteDef: 'Tag anklicken für 24h-Stundenansicht',
+    clearFilter: 'Filter löschen',
+    modelCount: (n) => `${n} Modelle`,
+    noModelData: 'Keine Modelldaten',
+    modelRowSub: (reqs, hit) => `${reqs} Anfr. · Cache ${hit}%`,
+    matchCount: (n) => `${n} Treffer`,
+    convCount: (n) => `${n} Sitzungen`,
+    noConvMatch: 'Keine passende Sitzung',
+    convRowSub: (m, rel, hit, share) => `${m} · ${rel} · Cache ${hit}% · ${share}%`,
+    convClickSub: (id) => `ID ${id} · Klicken zum Filtern`,
+    pageRange: (s, e, tot) => tot > 0 ? `Zeige ${s}–${e} von ${tot}` : '0 Einträge',
+    noRecords: 'Keine Einträge für diesen Filter',
+    evErr: 'Fehler',
+    evCp: 'CHECKPOINT',
+    evDrop: 'Cache-Einbruch',
+    evNormal: 'Normal',
+    toastSaved: 'Einstellungen gespeichert',
+    toastTriggered: '/compact gesendet',
+    toastBumped: 'Schwelle einmalig um +20K erhöht',
+    toastTested: 'Test ausgelöst',
+    toastCopied: '/compact kopiert',
+  },
+};
+
 const dayDropdown = document.getElementById('dayDropdown');
 const dayTrigger = document.getElementById('dayTrigger');
 const dayLabel = document.getElementById('dayLabel');
@@ -1239,6 +2188,8 @@ let calViewYear = now.getFullYear();
 let calViewMonth = now.getMonth();
 
 let state = {
+  langPref: 'auto',
+  lang: detectBrowserLang(),
   convId: 'all',
   model: 'all',
   day: todayStr,
@@ -1257,6 +2208,42 @@ let state = {
   paused: false,
   data: null,
 };
+
+function T() {
+  return I18N[state.lang] || I18N.en;
+}
+
+function applyI18n() {
+  const dict = T();
+  document.documentElement.lang = state.lang === 'zh' ? 'zh-CN' : state.lang;
+  document.querySelectorAll('[data-i18n]').forEach((el) => {
+    const k = el.dataset.i18n;
+    if (dict[k] !== undefined && typeof dict[k] === 'string') el.textContent = dict[k];
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+    const k = el.dataset.i18nPlaceholder;
+    if (dict[k] !== undefined) el.placeholder = dict[k];
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach((el) => {
+    const k = el.dataset.i18nTitle;
+    if (dict[k] !== undefined) el.title = dict[k];
+  });
+  const wdBox = document.getElementById('calWeekdays');
+  if (wdBox && dict.weekdays) {
+    wdBox.innerHTML = dict.weekdays.map((w) => `<span>${w}</span>`).join('');
+  }
+  pauseBtn.textContent = state.paused ? dict.resume : dict.pause;
+  syncLogExpanded();
+  ['uiLang', 'acMode', 'logCtxFilter', 'logSort', 'logPageSize'].forEach(syncCustomSelect);
+  if (state.data) {
+    renderFilterChips(state.data);
+    renderKPIs(state.data);
+    renderAdvice(state.data);
+    renderAutoCompact(state.data);
+    renderAnalytics(state.data);
+    renderTable(state.data);
+  }
+}
 
 function showUiToast(msg) {
   const el = document.getElementById('uiToast');
@@ -1280,11 +2267,12 @@ function fmtTime(ts) {
 
 function fmtRelTime(ts) {
   if (!ts) return '-';
+  const dict = T();
   const diff = Math.max(0, Math.floor((Date.now() - ts) / 1000));
-  if (diff < 60) return `${diff}秒前`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`;
-  return `${Math.floor(diff / 86400)}天前`;
+  if (diff < 60) return dict.relSec(diff);
+  if (diff < 3600) return dict.relMin(Math.floor(diff / 60));
+  if (diff < 86400) return dict.relHr(Math.floor(diff / 3600));
+  return dict.relDay(Math.floor(diff / 86400));
 }
 
 function escHtml(s) {
@@ -1310,20 +2298,21 @@ drawerBackdrop.onclick = closeDrawer;
 
 /* Active Cross-Filter Chips in Topbar */
 function renderFilterChips(d) {
+  const dict = T();
   const box = document.getElementById('filterChips');
   const chips = [];
   if (state.model !== 'all') {
-    chips.push({ kind: 'model', label: `模型: ${state.model}` });
+    chips.push({ kind: 'model', label: dict.chipModel(state.model) });
   }
   if (state.convId !== 'all') {
     const conv = (d?.conversations || []).find((c) => c.id === state.convId);
-    chips.push({ kind: 'conv', label: `会话: ${conv ? conv.title : state.convId.slice(0, 8)}` });
+    chips.push({ kind: 'conv', label: dict.chipConv(conv ? conv.title : state.convId.slice(0, 8)) });
   }
   if (state.hour !== null) {
-    chips.push({ kind: 'hour', label: `时段: ${String(state.hour).padStart(2, '0')}:00` });
+    chips.push({ kind: 'hour', label: dict.chipHour(String(state.hour).padStart(2, '0')) });
   }
   box.innerHTML = chips.map((c) => `
-    <button type="button" class="filter-chip" data-kind="${c.kind}" title="点击清除筛选">
+    <button type="button" class="filter-chip" data-kind="${c.kind}">
       <span class="filter-chip-text">${escHtml(c.label)}</span>
       <span class="filter-chip-x">×</span>
     </button>
@@ -1381,9 +2370,10 @@ document.getElementById('logTabs').querySelectorAll('button').forEach((btn) => {
 });
 
 function syncLogExpanded() {
+  const dict = T();
   document.getElementById('logBodyContainer').style.display = state.logExpanded ? 'block' : 'none';
   document.getElementById('logsHead').classList.toggle('collapsed', !state.logExpanded);
-  document.getElementById('toggleLogBodyBtn').textContent = state.logExpanded ? '收起' : '展开';
+  document.getElementById('toggleLogBodyBtn').textContent = state.logExpanded ? dict.collapseBtn : dict.expandBtn;
 }
 document.getElementById('toggleLogBodyBtn').onclick = () => {
   state.logExpanded = !state.logExpanded;
@@ -1396,8 +2386,9 @@ document.getElementById('kpiHitCard').onclick = () => switchLogTab('drop', true)
 document.getElementById('kpiCompactsCard').onclick = () => switchLogTab('checkpoint', true);
 
 pauseBtn.onclick = () => {
+  const dict = T();
   state.paused = !state.paused;
-  pauseBtn.textContent = state.paused ? '继续' : '暂停';
+  pauseBtn.textContent = state.paused ? dict.resume : dict.pause;
   liveDot.style.background = state.paused ? '#9ca3af' : '#16a34a';
 };
 
@@ -1448,7 +2439,8 @@ calToday.onclick = () => {
 };
 
 function renderCalendar() {
-  calMonthLabel.textContent = `${calViewYear}年 ${calViewMonth + 1}月`;
+  const dict = T();
+  calMonthLabel.textContent = dict.monthFmt(calViewYear, calViewMonth + 1);
   const firstDay = new Date(calViewYear, calViewMonth, 1);
   const startOffset = (firstDay.getDay() + 6) % 7;
   const startDate = new Date(calViewYear, calViewMonth, 1 - startOffset);
@@ -1549,63 +2541,40 @@ document.addEventListener('keydown', (e) => {
 
 /* KPIs (4 Cards) */
 function renderKPIs(d) {
+  const dict = T();
   document.getElementById('kpiTokens').textContent = fmtNum(d.totalTokens);
-  document.getElementById('kpiTokensSub').textContent = `缓存 ${fmtNum(d.totalCacheRead)} · 新输入 ${fmtNum(d.totalInput)} · 输出 ${fmtNum(d.totalOutput)}`;
+  document.getElementById('kpiTokensSub').textContent = dict.kpiTokSub(fmtNum(d.totalCacheRead), fmtNum(d.totalInput), fmtNum(d.totalOutput));
 
   document.getElementById('kpiHit').textContent = d.overallHitRate + '%';
   document.getElementById('hitBar').style.width = Math.min(100, d.overallHitRate) + '%';
 
   document.getElementById('kpiReqs').textContent = d.totalRequests.toLocaleString();
-  document.getElementById('kpiReqsSub').textContent = `缓存骤降 ${d.nonCompactDrops} · 错误 ${d.totalErrors}`;
+  document.getElementById('kpiReqsSub').textContent = dict.kpiReqSub(d.nonCompactDrops, d.totalErrors);
 
-  document.getElementById('kpiCompacts').textContent = d.totalCompactions + ' 次';
+  document.getElementById('kpiCompacts').textContent = dict.kpiCpVal(d.totalCompactions);
   const ceil = d.thresholdAdvice?.observedCeiling;
   document.getElementById('kpiCompactsSub').textContent = d.thresholdAdvice?.cpSampleCount > 0 && ceil
-    ? `平均触发点 ${fmtNum(ceil)}`
-    : `历史最高占用 ${fmtNum(d.thresholdAdvice?.maxObserved || 0)}`;
+    ? dict.kpiCpSubAvg(fmtNum(ceil))
+    : dict.kpiCpSubMax(fmtNum(d.thresholdAdvice?.maxObserved || 0));
 }
 
 /* Smart Advice inside Drawer */
 function renderAdvice(d) {
+  const dict = T();
   const a = d.thresholdAdvice;
   if (!a) return;
   document.getElementById('advSoft').textContent = fmtNum(a.softWarn);
   document.getElementById('advRec').textContent = fmtNum(a.recommendedCompact);
   document.getElementById('advCeil').textContent = fmtNum(a.observedCeiling);
-  document.getElementById('adviceScopeTag').textContent = d.selectedModel !== 'all' ? `模型: ${d.selectedModel}` : '全局历史行为分析';
-
-  const parts = [];
-  if (a.cpSampleCount > 0) {
-    parts.push(`历史共 ${a.cpSampleCount} 次自动 CHECKPOINT 压缩，平均触发点 <b>${fmtNum(a.observedCeiling)}</b>`);
-  } else {
-    parts.push(`暂未触发过 CHECKPOINT（最高上下文 <b>${fmtNum(a.maxObserved)}</b>），以 <b>${fmtNum(a.observedCeiling)}</b> 作为上限参考`);
-  }
-  if (a.nonCpDropCount > 0) {
-    parts.push(`非压缩骤降 <b>${a.nonCpDropCount}</b> 次，平均冷重算 <b>${fmtNum(a.avgDropRewarm)}</b> tokens`);
-  }
-  parts.push(`建议在 <b>${fmtNum(a.recommendedCompact)}</b> 前主动压缩。`);
-  document.getElementById('advReason').innerHTML = parts.join('；');
+  document.getElementById('adviceScopeTag').textContent = d.selectedModel !== 'all' ? dict.scopeModel(d.selectedModel) : dict.scopeGlobal;
+  document.getElementById('advReason').innerHTML = dict.advDesc(a, fmtNum);
 }
 
-/* Auto-Compact & Hero Live Watermark Strip */
+/* Auto-Compact & Hero Live Context Strip */
 let acInitialized = false;
 let acEditingThreshold = false;
 let acToastTestVisible = false;
-
-const MODE_SHORT = {
-  ui_send: '前台空闲静默压缩 + Hook 护航',
-  toast_confirm: '小 Toast 提醒',
-  hook_guard: '仅内部 Hook 护航',
-  hook_block: 'Hook 硬拦截',
-  notify: '仅提醒 + 复制命令',
-};
-const MODE_HINTS = {
-  ui_send: '同时启用内部 Hook 收尾护航，且仅在 Antigravity 处于前台、键鼠空闲时静默发送 /compact（绝不跨软件抢窗口焦点）',
-  toast_confirm: '到达阈值后在桌面与面板右下角弹出轻量 Toast，点击确定立即压缩',
-  hook_guard: '100% 不碰任何窗口：超阈值时通过 PreInvocation Hook 在内部引导模型收尾控量',
-  hook_block: '超阈值时暂停下一轮调用，直到你发送 /compact 后放行',
-  notify: '复制 /compact 到剪贴板并提示音提醒，不自动操作窗口',
-};
+let syncedResolvedLang = '';
 
 function syncRangeFill() {
   const el = document.getElementById('acThresholdRange');
@@ -1618,6 +2587,7 @@ function syncRangeFill() {
 }
 
 function renderAutoCompact(d) {
+  const dict = T();
   const ac = d.autoCompact;
   if (!ac || !ac.config) return;
   const cfg = ac.config;
@@ -1633,6 +2603,25 @@ function renderAutoCompact(d) {
     document.getElementById('acIdleSec').value = cfg.idleSeconds || 8;
     document.getElementById('acCooldownSec').value = cfg.cooldownSeconds || 120;
     document.getElementById('acLockManual').checked = tMode === 'manual_fixed';
+    const savedPref = cfg.lang || 'auto';
+    document.getElementById('uiLang').value = savedPref;
+    syncCustomSelect('uiLang');
+    const resolved = resolveUiLang(savedPref);
+    if (resolved !== state.lang) {
+      state.langPref = savedPref;
+      state.lang = resolved;
+      acInitialized = true;
+      applyI18n();
+      return;
+    }
+    if (cfg.resolvedLang !== resolved && syncedResolvedLang !== resolved) {
+      syncedResolvedLang = resolved;
+      fetch('./api/auto-compact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lang: savedPref, resolvedLang: resolved }),
+      }).catch(() => {});
+    }
     acInitialized = true;
   }
 
@@ -1643,31 +2632,31 @@ function renderAutoCompact(d) {
   }
 
   const curMode = document.getElementById('acMode').value;
-  document.getElementById('acModeHint').textContent = MODE_HINTS[curMode] || '';
+  document.getElementById('acModeHint').textContent = dict.modeHints[curMode] || '';
 
-  // Drawer threshold badge & reset button
   const tBadge = document.getElementById('acThresholdBadge');
   const resetBtn = document.getElementById('acResetAutoBtn');
   if (tMode === 'auto') {
-    tBadge.textContent = `自动 · ${effK}K`;
+    tBadge.textContent = dict.badgeAuto(effK);
     tBadge.className = 'status-badge indigo';
     resetBtn.style.display = 'none';
   } else if (tMode === 'manual_next') {
-    tBadge.textContent = `下次手动 · ${effK}K`;
+    tBadge.textContent = dict.badgeNext(effK);
     tBadge.className = 'status-badge warn';
     resetBtn.style.display = 'inline-flex';
   } else {
-    tBadge.textContent = `锁定手动 · ${effK}K`;
+    tBadge.textContent = dict.badgeLock(effK);
     tBadge.className = 'status-badge';
     resetBtn.style.display = 'inline-flex';
   }
-  document.getElementById('acThresholdSub').textContent = ac.effectiveReason || ac.autoBasis || '';
+  document.getElementById('acThresholdSub').textContent = state.lang === 'zh'
+    ? (ac.effectiveReason || ac.autoBasis || dict.threshSubAuto)
+    : dict.threshSubAuto;
 
-  // Hero Live Watermark Strip (activeTarget or fallback to latestWatermark)
   const target = ac.activeTarget;
   const fallbackW = d.latestWatermark;
   const curTokens = target ? target.contextTotal : (fallbackW ? fallbackW.contextTokens : 0);
-  const convTitle = target ? target.convTitle : (fallbackW ? (fallbackW.convTitle || '最近会话') : '近 15 分钟暂无活跃会话');
+  const convTitle = target ? target.convTitle : (fallbackW ? (fallbackW.convTitle || dict.recentConv) : dict.noActiveConv);
   const modelName = target?.model || fallbackW?.model || '';
 
   const titleEl = document.getElementById('heroConvTitle');
@@ -1701,68 +2690,66 @@ function renderAutoCompact(d) {
   const softTick = document.getElementById('heroSoftTick');
   softTick.style.left = softPct.toFixed(1) + '%';
   softTick.style.display = 'block';
-  softTick.title = `软预警线 ${fmtNum(softWarn)}`;
+  softTick.title = `${dict.softWarnLbl} ${fmtNum(softWarn)}`;
 
   const threshTick = document.getElementById('heroThreshTick');
   threshTick.style.left = threshPct.toFixed(1) + '%';
   threshTick.style.display = 'block';
-  threshTick.title = `压缩阈值 ${fmtNum(threshTokens)}`;
+  threshTick.title = `${dict.thresholdShort} ${fmtNum(threshTokens)}`;
 
   const stateBadge = document.getElementById('heroStateBadge');
   if (!cfg.enabled) {
-    stateBadge.textContent = '未开启';
+    stateBadge.textContent = dict.stateOff;
     stateBadge.className = 'status-badge';
   } else if (ac.snoozeLeftSec > 0) {
-    stateBadge.textContent = `已延后 ${ac.snoozeLeftSec}s`;
+    stateBadge.textContent = dict.stateSnoozed(ac.snoozeLeftSec);
     stateBadge.className = 'status-badge warn';
   } else if (ac.cooldownLeftSec > 0) {
-    stateBadge.textContent = `冷却中 ${ac.cooldownLeftSec}s`;
+    stateBadge.textContent = dict.stateCooldown(ac.cooldownLeftSec);
     stateBadge.className = 'status-badge indigo';
   } else if (isOver) {
-    stateBadge.textContent = '已超阈值';
+    stateBadge.textContent = dict.stateOver;
     stateBadge.className = 'status-badge danger';
   } else if (isWarn) {
-    stateBadge.textContent = '接近阈值';
+    stateBadge.textContent = dict.stateWarn;
     stateBadge.className = 'status-badge warn';
   } else {
-    stateBadge.textContent = '健康';
+    stateBadge.textContent = dict.stateHealthy;
     stateBadge.className = 'status-badge active';
   }
 
-  const modeLabel = tMode === 'auto' ? '自动阈值' : (tMode === 'manual_next' ? '下次手动阈值' : '锁定手动阈值');
-  document.getElementById('heroHint').textContent = `${modeLabel} · 软预警 ${fmtNum(softWarn)} · 实测上限 ${fmtNum(adv.observedCeiling || ceiling)}`;
-  document.getElementById('heroModeLine').textContent = `到达阈值：${MODE_SHORT[cfg.mode] || cfg.mode}`;
+  const modeLabel = tMode === 'auto' ? dict.modeLblAuto : (tMode === 'manual_next' ? dict.modeLblNext : dict.modeLblLock);
+  document.getElementById('heroHint').textContent = dict.heroHint(modeLabel, fmtNum(softWarn), fmtNum(adv.observedCeiling || ceiling));
+  document.getElementById('heroModeLine').textContent = dict.heroActionLine(dict.modeShort[cfg.mode] || cfg.mode);
 
-  document.getElementById('acLastResult').textContent = cfg.lastTriggeredStatus ? `最近执行：${cfg.lastTriggeredStatus}` : '';
+  document.getElementById('acLastResult').textContent = cfg.lastTriggeredStatus ? dict.lastExec(cfg.lastTriggeredStatus) : '';
 
   const banner = document.getElementById('acAlertBanner');
   if (ac.needsManualAlert && target) {
     banner.style.display = 'flex';
-    document.getElementById('acAlertText').textContent = `会话「${target.convTitle}」上下文占用 ${fmtNum(target.contextTotal)} 已达阈值 ${fmtNum(threshTokens)}，建议立即压缩。`;
+    document.getElementById('acAlertText').textContent = dict.alertText(target.convTitle, fmtNum(target.contextTotal), fmtNum(threshTokens));
   } else {
     banner.style.display = 'none';
   }
 
-  // Floating Web UI Toast
   const toast = document.getElementById('compactToast');
   if (ac.showToastPrompt || acToastTestVisible) {
-    document.getElementById('toastModelTag').textContent = target?.model || '当前模型';
+    document.getElementById('toastModelTag').textContent = target?.model || 'Active Model';
     document.getElementById('toastBody').innerHTML = target
-      ? `会话 <b>${escHtml(target.convTitle.slice(0, 26))}</b> 当前占用 <b>${fmtNum(target.contextTotal)}</b> 已达阈值 <b>${fmtNum(threshTokens)}</b>，是否立即发送 <code>/compact</code>？`
-      : `预览模式：到达阈值 <b>${fmtNum(threshTokens)}</b> 后将弹出此 Toast，点击「确定压缩」立即压缩。`;
+      ? dict.toastBodyLive(escHtml(target.convTitle.slice(0, 26)), fmtNum(target.contextTotal), fmtNum(threshTokens))
+      : dict.toastBodyTest(fmtNum(threshTokens));
     toast.style.display = 'block';
   } else {
     toast.style.display = 'none';
   }
 
-  // Trigger History inside Drawer
   const histBox = document.getElementById('acHistoryBox');
   const hist = Array.isArray(cfg.history) ? cfg.history.slice(0, 6) : [];
   if (hist.length > 0) {
     histBox.style.display = 'flex';
-    histBox.innerHTML = '<div class="drawer-sec-head"><span>最近触发记录</span></div>' + hist.map((h) => {
-      const dt = new Date(h.ts).toLocaleTimeString('zh-CN', { hour12: false });
-      const tag = h.isTest ? '[测试]' : (h.mode === 'web_toast_confirm' ? '[确认]' : '[自动]');
+    histBox.innerHTML = `<div class="drawer-sec-head"><span>${escHtml(dict.histTitle)}</span></div>` + hist.map((h) => {
+      const dt = new Date(h.ts).toLocaleTimeString([], { hour12: false });
+      const tag = h.isTest ? dict.tagTest : (h.mode === 'web_toast_confirm' ? dict.tagConfirm : dict.tagAuto);
       return `<div style="display:flex;justify-content:space-between;gap:8px;font-size:11px;line-height:1.4">
         <span style="color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(h.convTitle)}">${dt} ${tag} ${escHtml(h.convTitle)}</span>
         <span style="flex-shrink:0;color:${h.ok ? '#16a34a' : '#d97706'}">${escHtml(h.message)}</span>
@@ -1773,8 +2760,9 @@ function renderAutoCompact(d) {
   }
 }
 
-/* Unified Usage Analytics (Auto-matched Bar vs Line + Responsive 53w Heatmap) */
+/* Unified Usage Analytics */
 function renderMainChart(d) {
+  const dict = T();
   const svg = document.getElementById('mainChart');
   const area = document.getElementById('chartArea');
   const tip = document.getElementById('chartTooltip');
@@ -1880,11 +2868,11 @@ function renderMainChart(d) {
       const hr = (h.input + h.cacheRead) > 0 ? Math.round((h.cacheRead / (h.input + h.cacheRead)) * 100) + '%' : '-';
       tip.innerHTML = `
         <div class="tooltip-title">${d.targetDay} ${h.label}</div>
-        <div class="tooltip-row"><span>Token 合计</span><b>${fmtNum(h.tokens)}</b></div>
-        <div class="tooltip-row"><span>缓存读取</span><b>${fmtNum(h.cacheRead)}</b></div>
-        <div class="tooltip-row"><span>新输入</span><b>${fmtNum(h.input)}</b></div>
-        <div class="tooltip-row"><span>请求 / 压缩</span><b>${h.requests} / ${h.compactions}</b></div>
-        <div class="tooltip-row"><span>命中率</span><b>${hr}</b></div>`;
+        <div class="tooltip-row"><span>${dict.tipTotalTok}</span><b>${fmtNum(h.tokens)}</b></div>
+        <div class="tooltip-row"><span>${dict.tipCacheRead}</span><b>${fmtNum(h.cacheRead)}</b></div>
+        <div class="tooltip-row"><span>${dict.tipNewIn}</span><b>${fmtNum(h.input)}</b></div>
+        <div class="tooltip-row"><span>${dict.tipReqCp}</span><b>${h.requests} / ${h.compactions}</b></div>
+        <div class="tooltip-row"><span>${dict.tipHit}</span><b>${hr}</b></div>`;
       tip.style.display = 'block';
       const rect = area.getBoundingClientRect();
       const left = Math.min(rect.width - 170, Math.max(8, ev.clientX - rect.left + 10));
@@ -1896,13 +2884,12 @@ function renderMainChart(d) {
 }
 
 function renderHeatmap(d) {
+  const dict = T();
   const svg = document.getElementById('heatmapSvg');
   const area = document.getElementById('chartArea');
   const tip = document.getElementById('hmTooltip');
   const metric = state.metric === 'hitRate' ? 'tokens' : state.metric;
-  document.getElementById('hmMetricNote').textContent = state.metric === 'hitRate'
-    ? '热力图按 Token 展示 · 点格子跳当天'
-    : '点格子跳转当天分时';
+  document.getElementById('hmMetricNote').textContent = state.metric === 'hitRate' ? dict.hmNoteHit : dict.hmNoteDef;
 
   const end = new Date();
   end.setHours(0, 0, 0, 0);
@@ -1955,11 +2942,10 @@ function renderHeatmap(d) {
     if (dt.getMonth() !== lastMonth) {
       lastMonth = dt.getMonth();
       const mx = padL + w * (cellW + gap);
-      html += `<text x="${mx.toFixed(1)}" y="13" fill="#9ca3af" font-size="11">${lastMonth + 1}月</text>`;
+      html += `<text x="${mx.toFixed(1)}" y="13" fill="#9ca3af" font-size="11">${dict.shortMonth(lastMonth + 1)}</text>`;
     }
   }
-  const dayLabels = { 0: '周一', 2: '周三', 4: '周五', 6: '周日' };
-  Object.entries(dayLabels).forEach(([r, lbl]) => {
+  Object.entries(dict.hmDays).forEach(([r, lbl]) => {
     const ly = padT + Number(r) * (cellH + gap) + cellH / 2 + 4;
     html += `<text x="0" y="${ly.toFixed(1)}" fill="#9ca3af" font-size="11">${lbl}</text>`;
   });
@@ -1979,7 +2965,7 @@ function renderHeatmap(d) {
       tip.innerHTML = `
         <div class="tooltip-title">${c.key}</div>
         <div class="tooltip-row"><span>Token</span><b>${fmtNum(c.b.tokens)}</b></div>
-        <div class="tooltip-row"><span>请求 / 压缩</span><b>${c.b.requests} / ${c.b.compactions}</b></div>`;
+        <div class="tooltip-row"><span>${dict.tipReqCp}</span><b>${c.b.requests} / ${c.b.compactions}</b></div>`;
       tip.style.display = 'block';
       const rect = area.getBoundingClientRect();
       const left = Math.min(rect.width - 175, Math.max(8, ev.clientX - rect.left + 12));
@@ -2017,19 +3003,20 @@ function renderAnalytics(d) {
 }
 
 function renderRankPanel(d) {
+  const dict = T();
   const list = document.getElementById('rankList');
   const sub = document.getElementById('rankFilterSub');
 
   if (state.rankTab === 'models') {
     const rows = d.modelsBreakdown || [];
     sub.innerHTML = state.model !== 'all'
-      ? `<a href="#" id="clearRankFilter" style="color:var(--indigo);text-decoration:none;font-weight:600">清除筛选</a>`
-      : `${rows.length} 个模型`;
+      ? `<a href="#" id="clearRankFilter" style="color:var(--indigo);text-decoration:none;font-weight:600">${dict.clearFilter}</a>`
+      : dict.modelCount(rows.length);
     const clr = document.getElementById('clearRankFilter');
     if (clr) clr.onclick = (e) => { e.preventDefault(); state.model = 'all'; fetchData(); };
 
     if (!rows.length) {
-      list.innerHTML = '<div style="color:var(--subtle);font-size:12px;padding:12px 4px">暂无模型数据</div>';
+      list.innerHTML = `<div style="color:var(--subtle);font-size:12px;padding:12px 4px">${dict.noModelData}</div>`;
       return;
     }
     const maxTok = Math.max(1, ...rows.map((r) => r.totalTokens));
@@ -2046,7 +3033,7 @@ function renderRankPanel(d) {
           <span style="font-variant-numeric:tabular-nums">${fmtNum(r.totalTokens)}</span>
         </div>
         <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${pct}%;background:${col}"></div></div>
-        <div class="breakdown-sub">${r.requests} 次请求 · 命中率 ${r.hitRate}%</div>
+        <div class="breakdown-sub">${dict.modelRowSub(r.requests, r.hitRate)}</div>
       </div>`;
     }).join('');
 
@@ -2071,13 +3058,13 @@ function renderRankPanel(d) {
       : topRows;
 
     sub.innerHTML = state.convId !== 'all'
-      ? `<a href="#" id="clearRankFilter" style="color:var(--indigo);text-decoration:none;font-weight:600">清除筛选</a>`
-      : (q ? `匹配 ${rows.length} 个` : `共 ${allConvs.length} 会话`);
+      ? `<a href="#" id="clearRankFilter" style="color:var(--indigo);text-decoration:none;font-weight:600">${dict.clearFilter}</a>`
+      : (q ? dict.matchCount(rows.length) : dict.convCount(allConvs.length));
     const clr = document.getElementById('clearRankFilter');
     if (clr) clr.onclick = (e) => { e.preventDefault(); state.convId = 'all'; fetchData(); };
 
     if (!rows.length) {
-      list.innerHTML = '<div style="color:var(--subtle);font-size:12px;padding:12px 4px">无匹配会话</div>';
+      list.innerHTML = `<div style="color:var(--subtle);font-size:12px;padding:12px 4px">${dict.noConvMatch}</div>`;
       return;
     }
     const maxTok = Math.max(1, ...rows.map((c) => c.totalTokens || 0));
@@ -2095,7 +3082,7 @@ function renderRankPanel(d) {
           <span style="font-variant-numeric:tabular-nums">${c.totalTokens > 0 ? fmtNum(c.totalTokens) : c.id.slice(0, 6)}</span>
         </div>
         ${pct > 0 ? `<div class="rank-bar-track"><div class="rank-bar-fill" style="width:${pct}%;background:${col}"></div></div>` : ''}
-        <div class="breakdown-sub">${c.totalTokens > 0 ? `${escHtml(c.model || 'unknown')} · ${fmtRelTime(c.lastTs)} · 命中 ${c.hitRate}% · 占比 ${share}%` : `ID ${c.id.slice(0, 8)} · 点击查看此会话`}</div>
+        <div class="breakdown-sub">${c.totalTokens > 0 ? dict.convRowSub(escHtml(c.model || 'unknown'), fmtRelTime(c.lastTs), c.hitRate, share) : dict.convClickSub(c.id.slice(0, 8))}</div>
       </div>`;
     }).join('');
 
@@ -2111,6 +3098,7 @@ function renderRankPanel(d) {
 
 /* Clean Request Table */
 function renderTable(d) {
+  const dict = T();
   const cpEvents = d.checkpointEvents || [];
   const dropEvents = d.dropEvents || [];
   const errEvents = d.errorEvents || [];
@@ -2154,27 +3142,25 @@ function renderTable(d) {
   const startIdx = (state.logPage - 1) * pageSize;
   const pageRows = rows.slice(startIdx, startIdx + pageSize);
 
-  document.getElementById('logPageRange').textContent = totalRows > 0
-    ? `显示 ${startIdx + 1}–${startIdx + pageRows.length} / 共 ${totalRows} 条`
-    : '共 0 条记录';
+  document.getElementById('logPageRange').textContent = dict.pageRange(startIdx + 1, startIdx + pageRows.length, totalRows);
   document.getElementById('logPageNum').textContent = `${state.logPage} / ${totalPages}`;
   document.getElementById('logPrevBtn').disabled = state.logPage <= 1;
   document.getElementById('logNextBtn').disabled = state.logPage >= totalPages;
 
   const body = document.getElementById('logBody');
   if (pageRows.length === 0) {
-    body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--subtle);padding:24px">当前筛选下暂无记录</td></tr>';
+    body.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--subtle);padding:24px">${dict.noRecords}</td></tr>`;
     return;
   }
 
   body.innerHTML = pageRows.map((e, idx) => {
     const typeHtml = e.isError
-      ? `<span class="badge-err">${escHtml(e.status && e.status !== 'DONE' ? e.status : '错误')}</span>`
+      ? `<span class="badge-err">${escHtml(e.status && e.status !== 'DONE' ? e.status : dict.evErr)}</span>`
       : e.type === 'CHECKPOINT'
-        ? '<span class="badge-cp">CHECKPOINT 压缩</span>'
+        ? `<span class="badge-cp">${dict.evCp}</span>`
         : (e.cacheDrop && !e.afterCompaction
-          ? '<span class="badge-drop">缓存骤降</span>'
-          : `<span style="color:var(--subtle)">${escHtml(e.type || '正常')}</span>`);
+          ? `<span class="badge-drop">${dict.evDrop}</span>`
+          : `<span style="color:var(--subtle)">${escHtml(e.type || dict.evNormal)}</span>`);
     const hasDetail = Boolean(e.detail);
     const hitColor = e.hitRate < 60 ? 'var(--red)' : e.hitRate < 85 ? 'var(--amber)' : 'var(--green)';
     return `<tr class="${hasDetail ? 'has-detail' : ''}" data-ridx="${idx}">
@@ -2205,14 +3191,15 @@ async function fetchData() {
     if (!res.ok) return;
     const d = await res.json();
     state.data = d;
+    const dict = T();
 
     const badge = document.getElementById('lastActiveBadge');
     if (d.lastRequestTs) {
       const isRecent = (Date.now() - d.lastRequestTs) < 60000;
-      badge.textContent = `${isRecent ? '活跃中' : '空闲'} · ${fmtRelTime(d.lastRequestTs)}`;
+      badge.textContent = isRecent ? dict.activeNow(fmtRelTime(d.lastRequestTs)) : dict.idleNow(fmtRelTime(d.lastRequestTs));
       badge.className = 'status-badge' + (isRecent ? ' active' : '');
     } else {
-      badge.textContent = '暂无请求';
+      badge.textContent = dict.noReqs;
       badge.className = 'status-badge';
     }
 
@@ -2230,8 +3217,12 @@ async function fetchData() {
 async function saveAutoCompactSettings(overrides = {}, silent = false) {
   const lockManual = document.getElementById('acLockManual').checked;
   const curMode = state.data?.autoCompact?.thresholdMode || 'auto';
+  const langPref = document.getElementById('uiLang').value || 'auto';
+  const resolvedLang = resolveUiLang(langPref);
   const payload = {
     enabled: document.getElementById('acEnabled').checked,
+    lang: langPref,
+    resolvedLang,
     thresholdMode: overrides.thresholdMode ?? (lockManual ? 'manual_fixed' : curMode),
     thresholdK: Number(document.getElementById('acThresholdK').value) || 180,
     mode: document.getElementById('acMode').value,
@@ -2248,31 +3239,42 @@ async function saveAutoCompactSettings(overrides = {}, silent = false) {
     acInitialized = false;
     acEditingThreshold = false;
     await fetchData();
-    if (!silent) showUiToast('设置已保存');
+    if (!silent) showUiToast(T().toastSaved);
   }
 }
 
 async function triggerCompactImmediately(btnEl) {
+  const dict = T();
   const oldTxt = btnEl ? btnEl.textContent : '';
-  if (btnEl) { btnEl.disabled = true; btnEl.textContent = '压缩中…'; }
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = dict.compactingBtn; }
   try {
     acToastTestVisible = false;
     await fetch('./api/auto-compact/trigger-now', { method: 'POST' });
     acInitialized = false;
     await fetchData();
-    showUiToast('已触发 /compact');
+    showUiToast(T().toastTriggered);
   } finally {
     if (btnEl) { btnEl.disabled = false; btnEl.textContent = oldTxt; }
   }
 }
 
 /* Bind Controls */
+initCustomSelect('uiLang');
 initCustomSelect('acMode');
 initCustomSelect('logCtxFilter');
 initCustomSelect('logSort');
 initCustomSelect('logPageSize');
 syncRangeFill();
-syncLogExpanded();
+applyI18n();
+
+document.getElementById('uiLang').onchange = async (e) => {
+  const nextPref = e.target.value || 'auto';
+  state.langPref = nextPref;
+  state.lang = resolveUiLang(nextPref);
+  syncedResolvedLang = state.lang;
+  applyI18n();
+  await saveAutoCompactSettings({ lang: nextPref, resolvedLang: state.lang }, true);
+};
 
 document.getElementById('logSearch').oninput = (e) => {
   state.logQuery = e.target.value;
@@ -2350,7 +3352,7 @@ document.getElementById('acLockManual').onchange = (e) => {
   saveAutoCompactSettings({ thresholdMode: e.target.checked ? 'manual_fixed' : 'manual_next' }, true);
 };
 document.getElementById('acMode').onchange = () => {
-  document.getElementById('acModeHint').textContent = MODE_HINTS[document.getElementById('acMode').value] || '';
+  document.getElementById('acModeHint').textContent = T().modeHints[document.getElementById('acMode').value] || '';
   saveAutoCompactSettings({}, true);
 };
 document.getElementById('acSaveBtn').onclick = async () => {
@@ -2371,7 +3373,7 @@ async function bumpThreshold20K() {
   });
   acInitialized = false;
   await fetchData();
-  showUiToast('本次阈值已提高 20K');
+  showUiToast(T().toastBumped);
 }
 document.getElementById('toastBumpBtn').onclick = bumpThreshold20K;
 document.getElementById('acBannerBumpBtn').onclick = bumpThreshold20K;
@@ -2388,7 +3390,7 @@ document.getElementById('toastDismissBtn').onclick = async () => {
 document.getElementById('acTestBtn').onclick = async () => {
   const btn = document.getElementById('acTestBtn');
   btn.disabled = true;
-  btn.textContent = '测试中…';
+  btn.textContent = T().testingBtn;
   try {
     await saveAutoCompactSettings({}, true);
     if (document.getElementById('acMode').value === 'toast_confirm') {
@@ -2398,16 +3400,16 @@ document.getElementById('acTestBtn').onclick = async () => {
     await fetch('./api/auto-compact/test', { method: 'POST' });
     acInitialized = false;
     await fetchData();
-    showUiToast('已触发测试');
+    showUiToast(T().toastTested);
   } finally {
     btn.disabled = false;
-    btn.textContent = '测试触发';
+    btn.textContent = T().testBtn;
   }
 };
 document.getElementById('acCopyCmdBtn').onclick = async () => {
   try {
     await navigator.clipboard.writeText('/compact');
-    showUiToast('已复制 /compact');
+    showUiToast(T().toastCopied);
   } catch {}
 };
 

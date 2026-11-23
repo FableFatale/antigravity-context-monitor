@@ -399,11 +399,13 @@ const AUTO_COMPACT_PATH = join(PLUGIN_DATA_DIR, 'auto-compact.json');
 
 const DEFAULT_AUTO_COMPACT = {
   enabled: true,
+  lang: 'auto', // 'auto' | 'en' | 'zh' | 'ja' | 'fr' | 'de'
+  resolvedLang: '',
   thresholdMode: 'auto', // 'auto' | 'manual_next' | 'manual_fixed'
   thresholdK: 180,
   manualSetAt: 0,
   effectiveThresholdK: 180,
-  effectiveThresholdReason: '按模型与近期使用记录自动计算',
+  effectiveThresholdReason: 'Auto-calculated by model & recent history',
   idleSeconds: 8,
   cooldownSeconds: 120,
   mode: 'ui_send', // 'ui_send' | 'toast_confirm' | 'hook_guard' | 'hook_block' | 'notify'
@@ -412,6 +414,59 @@ const DEFAULT_AUTO_COMPACT = {
   lastTriggeredConvId: '',
   lastTriggeredStatus: '',
   history: [],
+};
+
+const VALID_LANGS = new Set(['auto', 'en', 'zh', 'ja', 'fr', 'de']);
+function detectOsLang() {
+  const raw = (Intl.DateTimeFormat().resolvedOptions().locale || process.env.LANG || process.env.LC_ALL || 'en').toLowerCase();
+  if (raw.startsWith('zh')) return 'zh';
+  if (raw.startsWith('ja')) return 'ja';
+  if (raw.startsWith('fr')) return 'fr';
+  if (raw.startsWith('de')) return 'de';
+  return 'en';
+}
+function resolveLang(cfg) {
+  if (cfg?.lang && cfg.lang !== 'auto' && VALID_LANGS.has(cfg.lang)) return cfg.lang;
+  if (cfg?.resolvedLang && cfg.resolvedLang !== 'auto' && VALID_LANGS.has(cfg.resolvedLang)) return cfg.resolvedLang;
+  return detectOsLang();
+}
+
+const BACKEND_I18N = {
+  en: {
+    toastTitle: 'Context & Cache · Threshold Reached',
+    toastConfirm: 'Compact (/compact)',
+    toastLater: 'Later',
+    toastLine1: (cur, th, m) => `Occupancy ${cur} / Threshold ${th}K (${m})`,
+    toastLine2: 'Click Compact to send /compact now',
+  },
+  zh: {
+    toastTitle: 'Context & Cache · 到达压缩阈值',
+    toastConfirm: '确定压缩 (/compact)',
+    toastLater: '暂不',
+    toastLine1: (cur, th, m) => `当前占用 ${cur} / 阈值 ${th}K (${m})`,
+    toastLine2: '点击「确定压缩」将立即发送 /compact',
+  },
+  ja: {
+    toastTitle: 'Context & Cache · 圧縮しきい値に到達',
+    toastConfirm: '今すぐ圧縮 (/compact)',
+    toastLater: '後で',
+    toastLine1: (cur, th, m) => `使用量 ${cur} / しきい値 ${th}K (${m})`,
+    toastLine2: 'クリックして /compact を実行',
+  },
+  fr: {
+    toastTitle: 'Context & Cache · Seuil atteint',
+    toastConfirm: 'Compresser (/compact)',
+    toastLater: 'Plus tard',
+    toastLine1: (cur, th, m) => `Occupation ${cur} / Seuil ${th}K (${m})`,
+    toastLine2: 'Cliquez pour envoyer /compact',
+  },
+  de: {
+    toastTitle: 'Context & Cache · Schwellenwert erreicht',
+    toastConfirm: 'Komprimieren (/compact)',
+    toastLater: 'Später',
+    toastLine1: (cur, th, m) => `Auslastung ${cur} / Schwelle ${th}K (${m})`,
+    toastLine2: 'Klicken, um /compact auszuführen',
+  },
 };
 
 function loadAutoCompactConfig() {
@@ -499,8 +554,12 @@ function runPowerShellCompact(mode, toastMeta = null, options = {}) {
 
     if (mode === 'toast_confirm') {
       timeoutMs = 35000;
-      const safeLine1 = String(toastMeta?.line1 || '当前会话上下文已到达设定阈值').replace(/'/g, "''");
-      const safeLine2 = String(toastMeta?.line2 || '点击「确定压缩」将立即发送 /compact').replace(/'/g, "''");
+      const tDict = BACKEND_I18N[resolveLang(autoCompactConfig)] || BACKEND_I18N.en;
+      const safeTitle = String(toastMeta?.title || tDict.toastTitle).replace(/'/g, "''");
+      const safeLine1 = String(toastMeta?.line1 || tDict.toastTitle).replace(/'/g, "''");
+      const safeLine2 = String(toastMeta?.line2 || tDict.toastLine2).replace(/'/g, "''");
+      const safeBtnOk = String(tDict.toastConfirm).replace(/'/g, "''");
+      const safeBtnNo = String(tDict.toastLater).replace(/'/g, "''");
       psScript = [
         '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8',
         'Add-Type -AssemblyName System.Windows.Forms',
@@ -541,7 +600,7 @@ function runPowerShellCompact(mode, toastMeta = null, options = {}) {
         '$bar.BackColor = [System.Drawing.Color]::FromArgb(37,99,235)',
         '$form.Controls.Add($bar)',
         '$lblTitle = New-Object System.Windows.Forms.Label',
-        '$lblTitle.Text = "Context & Cache · 到达压缩阈值"',
+        `$lblTitle.Text = '${safeTitle}'`,
         '$lblTitle.Font = New-Object System.Drawing.Font("Microsoft YaHei UI", 9.5, [System.Drawing.FontStyle]::Bold)',
         '$lblTitle.ForeColor = [System.Drawing.Color]::FromArgb(15,23,42)',
         '$lblTitle.Location = New-Object System.Drawing.Point(14, 14)',
@@ -562,25 +621,25 @@ function runPowerShellCompact(mode, toastMeta = null, options = {}) {
         '$lbl2.Size = New-Object System.Drawing.Size(332, 18)',
         '$form.Controls.Add($lbl2)',
         '$btnOk = New-Object System.Windows.Forms.Button',
-        '$btnOk.Text = "确定压缩 (/compact)"',
+        `$btnOk.Text = '${safeBtnOk}'`,
         '$btnOk.Font = New-Object System.Drawing.Font("Microsoft YaHei UI", 8.5, [System.Drawing.FontStyle]::Bold)',
         '$btnOk.BackColor = [System.Drawing.Color]::FromArgb(37,99,235)',
         '$btnOk.ForeColor = [System.Drawing.Color]::White',
         '$btnOk.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat',
         '$btnOk.FlatAppearance.BorderSize = 0',
         '$btnOk.Location = New-Object System.Drawing.Point(14, 86)',
-        '$btnOk.Size = New-Object System.Drawing.Size(156, 30)',
+        '$btnOk.Size = New-Object System.Drawing.Size(166, 30)',
         '$btnOk.Add_Click({ $script:confirmed = $true; $form.Close() })',
         '$form.Controls.Add($btnOk)',
         '$btnNo = New-Object System.Windows.Forms.Button',
-        '$btnNo.Text = "暂不"',
+        `$btnNo.Text = '${safeBtnNo}'`,
         '$btnNo.Font = New-Object System.Drawing.Font("Microsoft YaHei UI", 8.5)',
         '$btnNo.BackColor = [System.Drawing.Color]::FromArgb(241,245,249)',
         '$btnNo.ForeColor = [System.Drawing.Color]::FromArgb(51,65,85)',
         '$btnNo.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat',
         '$btnNo.FlatAppearance.BorderSize = 0',
-        '$btnNo.Location = New-Object System.Drawing.Point(180, 86)',
-        '$btnNo.Size = New-Object System.Drawing.Size(76, 30)',
+        '$btnNo.Location = New-Object System.Drawing.Point(188, 86)',
+        '$btnNo.Size = New-Object System.Drawing.Size(80, 30)',
         '$btnNo.Add_Click({ $script:dismissed = $true; $form.Close() })',
         '$form.Controls.Add($btnNo)',
         '$timer = New-Object System.Windows.Forms.Timer',
@@ -834,9 +893,11 @@ async function evaluateAutoCompact(forceTest = false) {
 
   autoCompactRunning = true;
   try {
+    const tDict = BACKEND_I18N[resolveLang(autoCompactConfig)] || BACKEND_I18N.en;
     const toastMeta = {
-      line1: `当前占用 ${fmtKShort(target?.contextTotal || thresholdTokens)} / 阈值 ${eff.effectiveK}K (${target?.model || '当前模型'})`,
-      line2: (target?.convTitle || '测试压缩确认弹窗').slice(0, 32),
+      title: tDict.toastTitle,
+      line1: tDict.toastLine1(fmtKShort(target?.contextTotal || thresholdTokens), eff.effectiveK, target?.model || 'Active Model'),
+      line2: (target?.convTitle || tDict.toastLine2).slice(0, 32),
     };
     const res = (mode === 'hook_guard' || mode === 'hook_block')
       ? {
@@ -964,6 +1025,8 @@ export function getFullOverview({ id = 'all', day = '', model = 'all', hour = ''
 export function updateAutoCompactConfig(body = {}) {
   syncAutoCompactConfigFromDisk();
   if (typeof body.enabled === 'boolean') autoCompactConfig.enabled = body.enabled;
+  if (body.lang && VALID_LANGS.has(body.lang)) autoCompactConfig.lang = body.lang;
+  if (body.resolvedLang && VALID_LANGS.has(body.resolvedLang)) autoCompactConfig.resolvedLang = body.resolvedLang;
   if (VALID_THRESHOLD_MODES.has(body.thresholdMode)) {
     autoCompactConfig.thresholdMode = body.thresholdMode;
     if (body.thresholdMode === 'manual_next') autoCompactConfig.manualSetAt = Date.now();

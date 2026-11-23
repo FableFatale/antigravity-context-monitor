@@ -129,15 +129,69 @@ function main() {
   const convId = payload.conversationId || 'unknown';
   const now = Date.now();
 
+  const VALID_LANGS = new Set(['en', 'zh', 'ja', 'fr', 'de']);
+  const detectOsLang = () => {
+    const raw = (Intl.DateTimeFormat().resolvedOptions().locale || process.env.LANG || process.env.LC_ALL || 'en').toLowerCase();
+    if (raw.startsWith('zh')) return 'zh';
+    if (raw.startsWith('ja')) return 'ja';
+    if (raw.startsWith('fr')) return 'fr';
+    if (raw.startsWith('de')) return 'de';
+    return 'en';
+  };
+  const lang = (cfg.lang && cfg.lang !== 'auto' && VALID_LANGS.has(cfg.lang))
+    ? cfg.lang
+    : (cfg.resolvedLang && VALID_LANGS.has(cfg.resolvedLang) ? cfg.resolvedLang : detectOsLang());
+
+  const curStr = fmtK(snap.contextTotal);
+  const thStr = fmtK(thresholdTokens);
+  const hitStr = `${snap.hitRate}%`;
+
+  const HOOK_TEXT = {
+    en: {
+      block: `[Context Guard] Context occupancy ${curStr} reached threshold ${thStr} (${pct}%, cache hit ${hitStr}).\nPlease run /compact before continuing, or adjust the threshold in [Context & Cache](sidecar://context-monitor/context-monitor/).`,
+      head: `> **Context & Cache Monitor**: Context occupancy **${curStr}** / threshold **${thStr}** (${pct}% · cache hit ${hitStr}).`,
+      ui_send: ` Internal Hook Guard is active; \`/compact\` will be sent silently when Antigravity is in the foreground and input is idle.`,
+      toast_confirm: ` A toast confirmation will appear when idle, or open [Context & Cache](sidecar://context-monitor/context-monitor/) to compact now.`,
+      other: ` Consider running \`/compact\` after this turn, or open [Context & Cache](sidecar://context-monitor/context-monitor/).`,
+    },
+    zh: {
+      block: `[Context Guard] 当前上下文占用 ${curStr} 已达到设定阈值 ${thStr} (${pct}%，缓存命中率 ${hitStr})。\n请发送 /compact 压缩上下文后再继续，或在侧栏 [Context & Cache](sidecar://context-monitor/context-monitor/) 调整阈值/模式。`,
+      head: `> **Context & Cache Monitor**：当前上下文占用 **${curStr}** / 阈值 **${thStr}** (${pct}% · 缓存命中 ${hitStr})。`,
+      ui_send: ` 已启用内部 Hook 护航（收尾控量），待本轮结束且 Antigravity 处于前台键鼠空闲时将静默发送 \`/compact\`（绝不抢占其他窗口焦点）。`,
+      toast_confirm: ` 本轮空闲后将弹出 Toast 提醒供你点确定立马压缩；也可点击 [Context & Cache](sidecar://context-monitor/context-monitor/) 查看或立即压缩。`,
+      other: ` 建议本轮结束后发送 \`/compact\`，或打开 [Context & Cache](sidecar://context-monitor/context-monitor/) 调整阈值。`,
+    },
+    ja: {
+      block: `[Context Guard] コンテキスト使用量 ${curStr} がしきい値 ${thStr} に達しました (${pct}%・キャッシュヒット率 ${hitStr})。\n続行する前に /compact を実行するか、[Context & Cache](sidecar://context-monitor/context-monitor/) で設定を調整してください。`,
+      head: `> **Context & Cache Monitor**：コンテキスト使用量 **${curStr}** / しきい値 **${thStr}** (${pct}% · キャッシュヒット ${hitStr})。`,
+      ui_send: ` 内部 Hook ガードが有効です。このターン終了後、Antigravity が前面かつ入力アイドル時に \`/compact\` を自動送信します。`,
+      toast_confirm: ` アイドル時に確認トーストが表示されます。[Context & Cache](sidecar://context-monitor/context-monitor/) から即時圧縮も可能です。`,
+      other: ` このターン終了後に \`/compact\` を実行するか、[Context & Cache](sidecar://context-monitor/context-monitor/) を確認してください。`,
+    },
+    fr: {
+      block: `[Context Guard] L'occupation du contexte ${curStr} a atteint le seuil ${thStr} (${pct}%, cache ${hitStr}).\nExécutez /compact avant de continuer ou ajustez le seuil dans [Context & Cache](sidecar://context-monitor/context-monitor/).`,
+      head: `> **Context & Cache Monitor** : Occupation du contexte **${curStr}** / seuil **${thStr}** (${pct}% · cache ${hitStr}).`,
+      ui_send: ` Garde Hook interne active ; \`/compact\` sera envoyé silencieusement lorsque Antigravity sera au premier plan et inactif.`,
+      toast_confirm: ` Une notification Toast s'affichera à l'inactivité, ou ouvrez [Context & Cache](sidecar://context-monitor/context-monitor/).`,
+      other: ` Pensez à exécuter \`/compact\` après ce tour ou ouvrez [Context & Cache](sidecar://context-monitor/context-monitor/).`,
+    },
+    de: {
+      block: `[Context Guard] Kontextauslastung ${curStr} hat den Schwellenwert ${thStr} erreicht (${pct}%, Cache-Trefferquote ${hitStr}).\nBitte führen Sie /compact aus oder passen Sie den Wert in [Context & Cache](sidecar://context-monitor/context-monitor/) an.`,
+      head: `> **Context & Cache Monitor**: Kontextauslastung **${curStr}** / Schwelle **${thStr}** (${pct}% · Cache ${hitStr}).`,
+      ui_send: ` Interner Hook-Schutz aktiv; \`/compact\` wird im Leerlauf gesendet, sobald Antigravity im Vordergrund ist.`,
+      toast_confirm: ` Im Leerlauf erscheint eine Toast-Bestätigung, oder öffnen Sie [Context & Cache](sidecar://context-monitor/context-monitor/).`,
+      other: ` Führen Sie nach dieser Runde \`/compact\` aus oder öffnen Sie [Context & Cache](sidecar://context-monitor/context-monitor/).`,
+    },
+  };
+  const tx = HOOK_TEXT[lang] || HOOK_TEXT.en;
+
   // Mode 1: Hard gate before crossing threshold
   if (mode === 'hook_block') {
     const out = {
       injectSteps: [
         {
           errorMessage: {
-            userMessage:
-              `[Context Guard] 当前上下文占用 ${fmtK(snap.contextTotal)} 已达到设定阈值 ${fmtK(thresholdTokens)} (${pct}%，缓存命中率 ${snap.hitRate}%)。\n` +
-              `请发送 /compact 压缩上下文后再继续，或在侧栏 [Context & Cache](sidecar://context-monitor/context-monitor/) 调整阈值/模式。`,
+            userMessage: tx.block,
           },
         },
       ],
@@ -157,13 +211,7 @@ function main() {
   state[convId] = { lastWarnAt: now, lastContextTotal: snap.contextTotal };
   saveJson(STATE_PATH, state);
 
-  const bannerMd =
-    `> **Context & Cache Monitor**：当前上下文占用 **${fmtK(snap.contextTotal)}** / 阈值 **${fmtK(thresholdTokens)}** (${pct}% · 缓存命中 ${snap.hitRate}%)。` +
-    (mode === 'ui_send'
-      ? ` 已启用内部 Hook 护航（收尾控量），待本轮结束且 Antigravity 处于前台键鼠空闲时将静默发送 \`/compact\`（绝不抢占其他窗口焦点）。`
-      : mode === 'toast_confirm'
-        ? ` 本轮空闲后将弹出 Toast 提醒供你点确定立马压缩；也可点击 [Context & Cache](sidecar://context-monitor/context-monitor/) 查看或立即压缩。`
-        : ` 建议本轮结束后发送 \`/compact\`，或打开 [Context & Cache](sidecar://context-monitor/context-monitor/) 调整阈值。`);
+  const bannerMd = tx.head + (mode === 'ui_send' ? tx.ui_send : mode === 'toast_confirm' ? tx.toast_confirm : tx.other);
 
   if (mode === 'hook_guard' || mode === 'ui_send') {
     const out = {
