@@ -1,0 +1,18 @@
+{
+  "name": "antigravity-context-monitor-mcp",
+  "version": "1.3.0",
+  "description": "MCP App server for Antigravity Context & Cache Monitor plugin",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "keywords": ["antigravity", "mcp", "context-monitor", "gemini", "cache"],
+  "author": "FableFatale",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^2.0.4",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "esbuild": "^0.28.2"
+  }
+}

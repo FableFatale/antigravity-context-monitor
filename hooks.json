@@ -1,0 +1,12 @@
+{
+  "context-guard": {
+    "enabled": true,
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "node hooks/context-guard.mjs",
+        "timeout": 10
+      }
+    ]
+  }
+}
