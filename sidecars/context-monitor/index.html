@@ -1153,20 +1153,20 @@
     <div class="drawer-section">
       <div class="drawer-sec-head"><span>到达阈值后的行为</span></div>
       <div class="p-select-wrap block" data-select-id="acMode">
-        <input type="hidden" id="acMode" value="toast_confirm" />
+        <input type="hidden" id="acMode" value="ui_send" />
         <button type="button" class="p-select-trigger">
-          <span class="p-select-label">小 Toast 提醒（点确定立马压缩）</span>
+          <span class="p-select-label">全自动静默压缩（前台空闲触发 + Hook 护航）</span>
           <svg class="p-select-chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
         <div class="p-select-menu">
-          <div class="p-select-opt active" data-val="toast_confirm"><span>小 Toast 提醒（点确定立马压缩）</span><span class="opt-check">✓</span></div>
-          <div class="p-select-opt" data-val="ui_send"><span>全自动压缩（空闲后自动发 /compact）</span><span class="opt-check">✓</span></div>
-          <div class="p-select-opt" data-val="hook_guard"><span>Hook 护航（到阈值前收尾提醒）</span><span class="opt-check">✓</span></div>
+          <div class="p-select-opt active" data-val="ui_send"><span>全自动静默压缩（前台空闲触发 + Hook 护航）</span><span class="opt-check">✓</span></div>
+          <div class="p-select-opt" data-val="hook_guard"><span>仅内部 Hook 护航（100% 不碰窗口）</span><span class="opt-check">✓</span></div>
+          <div class="p-select-opt" data-val="toast_confirm"><span>小 Toast 提醒（点确定立马压缩）</span><span class="opt-check">✓</span></div>
           <div class="p-select-opt" data-val="hook_block"><span>Hook 硬拦截（到阈值暂停等 /compact）</span><span class="opt-check">✓</span></div>
           <div class="p-select-opt" data-val="notify"><span>仅强提醒 + 复制 /compact</span><span class="opt-check">✓</span></div>
         </div>
       </div>
-      <div id="acModeHint" style="font-size:11px;color:var(--subtle);line-height:1.45">到达阈值后右下角弹出轻量 Toast，点击确定立即压缩</div>
+      <div id="acModeHint" style="font-size:11px;color:var(--subtle);line-height:1.45">同时启用内部 Hook 收尾护航，且仅在 Antigravity 处于前台、键鼠空闲时静默发送 /compact（绝不跨软件抢窗口焦点）</div>
     </div>
 
     <!-- Timing -->
@@ -1593,16 +1593,16 @@ let acEditingThreshold = false;
 let acToastTestVisible = false;
 
 const MODE_SHORT = {
+  ui_send: '前台空闲静默压缩 + Hook 护航',
   toast_confirm: '小 Toast 提醒',
-  ui_send: '全自动发送 /compact',
-  hook_guard: 'Hook 护航提醒',
+  hook_guard: '仅内部 Hook 护航',
   hook_block: 'Hook 硬拦截',
   notify: '仅提醒 + 复制命令',
 };
 const MODE_HINTS = {
+  ui_send: '同时启用内部 Hook 收尾护航，且仅在 Antigravity 处于前台、键鼠空闲时静默发送 /compact（绝不跨软件抢窗口焦点）',
   toast_confirm: '到达阈值后在桌面与面板右下角弹出轻量 Toast，点击确定立即压缩',
-  ui_send: '到达阈值且会话空闲后，自动向 Antigravity 发送 /compact（无人值守）',
-  hook_guard: '超阈值时通过 PreInvocation Hook 提醒模型收尾并避免大探索',
+  hook_guard: '100% 不碰任何窗口：超阈值时通过 PreInvocation Hook 在内部引导模型收尾控量',
   hook_block: '超阈值时暂停下一轮调用，直到你发送 /compact 后放行',
   notify: '复制 /compact 到剪贴板并提示音提醒，不自动操作窗口',
 };
@@ -1628,7 +1628,7 @@ function renderAutoCompact(d) {
 
   if (!acInitialized) {
     document.getElementById('acEnabled').checked = Boolean(cfg.enabled);
-    document.getElementById('acMode').value = cfg.mode || 'toast_confirm';
+    document.getElementById('acMode').value = cfg.mode || 'ui_send';
     syncCustomSelect('acMode');
     document.getElementById('acIdleSec').value = cfg.idleSeconds || 8;
     document.getElementById('acCooldownSec').value = cfg.cooldownSeconds || 120;

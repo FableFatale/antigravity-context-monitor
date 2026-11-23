@@ -160,19 +160,19 @@ function main() {
   const bannerMd =
     `> **Context & Cache Monitor**：当前上下文占用 **${fmtK(snap.contextTotal)}** / 阈值 **${fmtK(thresholdTokens)}** (${pct}% · 缓存命中 ${snap.hitRate}%)。` +
     (mode === 'ui_send'
-      ? ` 本轮空闲后侧栏插件将自动发送 \`/compact\`；点击 [Context & Cache](sidecar://context-monitor/context-monitor/) 可调下次阈值。`
+      ? ` 已启用内部 Hook 护航（收尾控量），待本轮结束且 Antigravity 处于前台键鼠空闲时将静默发送 \`/compact\`（绝不抢占其他窗口焦点）。`
       : mode === 'toast_confirm'
         ? ` 本轮空闲后将弹出 Toast 提醒供你点确定立马压缩；也可点击 [Context & Cache](sidecar://context-monitor/context-monitor/) 查看或立即压缩。`
         : ` 建议本轮结束后发送 \`/compact\`，或打开 [Context & Cache](sidecar://context-monitor/context-monitor/) 调整阈值。`);
 
-  if (mode === 'hook_guard') {
+  if (mode === 'hook_guard' || mode === 'ui_send') {
     const out = {
       injectSteps: [
         {
           systemMessage: {
             systemMessage:
               `[Context Guard] Active context is ${fmtK(snap.contextTotal)} tokens (threshold ${fmtK(thresholdTokens)}). ` +
-              `Finish the current atomic step cleanly, avoid starting large broad searches or reading huge files, and remind the user to run /compact at the end of this response.`,
+              `Finish the current atomic step cleanly, avoid starting large broad searches or reading huge files, and keep output concise so compaction can run smoothly.`,
             metadata: {
               user_markdown: bannerMd,
             },

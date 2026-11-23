@@ -406,7 +406,7 @@ const DEFAULT_AUTO_COMPACT = {
   effectiveThresholdReason: '按模型与近期使用记录自动计算',
   idleSeconds: 8,
   cooldownSeconds: 120,
-  mode: 'toast_confirm', // 'toast_confirm' | 'ui_send' | 'hook_guard' | 'hook_block' | 'notify'
+  mode: 'ui_send', // 'ui_send' | 'toast_confirm' | 'hook_guard' | 'hook_block' | 'notify'
   snoozedUntil: 0,
   lastTriggeredAt: 0,
   lastTriggeredConvId: '',
@@ -452,7 +452,9 @@ function syncAutoCompactConfigFromDisk() {
   } catch {}
 }
 
-function runPowerShellCompact(mode, toastMeta = null) {
+function runPowerShellCompact(mode, toastMeta = null, options = {}) {
+  const requireForeground = Boolean(options.requireForeground);
+  const minInputIdleMs = Math.max(0, Number(options.minInputIdleMs) || 0);
   return new Promise((resolve) => {
     const sendKeysLines = [
       '$proc = Get-Process | Where-Object { $_.MainWindowHandle -ne 0 -and ($_.ProcessName -match "antigravity" -or $_.MainWindowTitle -match "Antigravity") } | Select-Object -First 1',
@@ -460,16 +462,35 @@ function runPowerShellCompact(mode, toastMeta = null) {
       '  @{ ok = $false; reason = "NO_WINDOW_HANDLE"; message = "未检测到 Antigravity 桌面窗口句柄（请确认 Antigravity 窗口可见或改用 Hook 护航/硬拦截模式）" } | ConvertTo-Json -Compress',
       '  exit 0',
       '}',
+      ...(requireForeground
+        ? [
+            '$fg = [Win32]::GetForegroundWindow()',
+            '$fgPid = [uint32]0',
+            '[Win32]::GetWindowThreadProcessId($fg, [ref]$fgPid) | Out-Null',
+            '$fgProc = if ($fgPid -gt 0) { Get-Process -Id $fgPid -ErrorAction SilentlyContinue } else { $null }',
+            '$isAgyForeground = ($fg -eq $proc.MainWindowHandle) -or ($null -ne $fgProc -and ($fgProc.ProcessName -match "antigravity" -or $fgProc.MainWindowTitle -match "Antigravity"))',
+            'if (-not $isAgyForeground) {',
+            '  @{ ok = $false; deferred = $true; reason = "DEFERRED_NOT_FOREGROUND"; message = "Antigravity 当前不在前台，已静默挂起（不抢占其他窗口焦点）" } | ConvertTo-Json -Compress',
+            '  exit 0',
+            '}',
+            `$inputIdleMs = [Win32]::GetInputIdleMs()`,
+            `if ($inputIdleMs -lt ${minInputIdleMs}) {`,
+            '  @{ ok = $false; deferred = $true; reason = "DEFERRED_USER_ACTIVE"; message = ("检测到键鼠正在输入 (" + [int]($inputIdleMs / 1000) + "s)，已静默顺延") } | ConvertTo-Json -Compress',
+            '  exit 0',
+            '}',
+          ]
+        : [
+            '[Win32]::ShowWindow($proc.MainWindowHandle, 9) | Out-Null',
+            '[Win32]::SetForegroundWindow($proc.MainWindowHandle) | Out-Null',
+            'Start-Sleep -Milliseconds 220',
+          ]),
       '$oldClip = $null',
       'try { if ([System.Windows.Forms.Clipboard]::ContainsText()) { $oldClip = [System.Windows.Forms.Clipboard]::GetText() } } catch {}',
-      '[Win32]::ShowWindow($proc.MainWindowHandle, 9) | Out-Null',
-      '[Win32]::SetForegroundWindow($proc.MainWindowHandle) | Out-Null',
-      'Start-Sleep -Milliseconds 260',
       '[System.Windows.Forms.Clipboard]::SetText("/compact")',
       '[System.Windows.Forms.SendKeys]::SendWait("^v")',
-      'Start-Sleep -Milliseconds 120',
+      'Start-Sleep -Milliseconds 100',
       '[System.Windows.Forms.SendKeys]::SendWait("{ENTER}")',
-      'Start-Sleep -Milliseconds 150',
+      'Start-Sleep -Milliseconds 130',
       'if ($null -ne $oldClip) { try { [System.Windows.Forms.Clipboard]::SetText($oldClip) } catch {} }',
     ];
 
@@ -587,12 +608,23 @@ function runPowerShellCompact(mode, toastMeta = null) {
         'using System;',
         'using System.Runtime.InteropServices;',
         'public class Win32 {',
+        '  [StructLayout(LayoutKind.Sequential)]',
+        '  public struct LASTINPUTINFO { public uint cbSize; public uint dwTime; }',
         '  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);',
         '  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);',
+        '  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();',
+        '  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);',
+        '  [DllImport("user32.dll")] public static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);',
+        '  public static uint GetInputIdleMs() {',
+        '    LASTINPUTINFO lii = new LASTINPUTINFO();',
+        '    lii.cbSize = (uint)Marshal.SizeOf(typeof(LASTINPUTINFO));',
+        '    if (!GetLastInputInfo(ref lii)) return 999999;',
+        '    return unchecked((uint)Environment.TickCount - lii.dwTime);',
+        '  }',
         '}',
         '"@',
         ...sendKeysLines,
-        '@{ ok = $true; reason = "SENT_KEYS"; message = ("已向窗口 [" + $proc.MainWindowTitle + "] 发送 /compact") } | ConvertTo-Json -Compress',
+        '@{ ok = $true; reason = "SENT_KEYS"; message = ("已在前台空闲时静默向窗口 [" + $proc.MainWindowTitle + "] 发送 /compact") } | ConvertTo-Json -Compress',
       ].join('\r\n');
     } else {
       psScript = [
@@ -814,7 +846,16 @@ async function evaluateAutoCompact(forceTest = false) {
             ? `Hook 硬拦截已就绪：下次对话前若上下文占用 >= ${eff.effectiveK}K 将自动暂停等待 /compact`
             : `Hook 护航已就绪：下次对话前若上下文占用 >= ${eff.effectiveK}K 将注入收尾提醒与内联横幅`,
         }
-      : await runPowerShellCompact(mode, toastMeta);
+      : await runPowerShellCompact(mode, toastMeta, {
+          requireForeground: !forceTest && mode === 'ui_send',
+          minInputIdleMs: !forceTest && mode === 'ui_send' ? Math.min(6000, Math.max(3000, Math.floor(idleMs * 0.6))) : 0,
+        });
+    if (!forceTest && res.deferred) {
+      autoCompactConfig.lastTriggeredStatus = `静默挂起: ${res.message}`;
+      saveAutoCompactConfig(autoCompactConfig);
+      try { autoCompactConfigMtime = statSync(AUTO_COMPACT_PATH).mtimeMs; } catch {}
+      return { skipped: true, deferred: true, reason: res.reason, message: res.message };
+    }
     const entry = {
       ts: now,
       convId: target?.convId || 'manual-test',
