@@ -1,0 +1,56 @@
+# Context & Cache Monitor for Antigravity
+
+> Native Google Antigravity plugin for observing Gemini context occupancy, prefix cache hit rates, and `CHECKPOINT` compactions, with proactive threshold-based `/compact` automation.
+
+This file follows the llms.txt convention and is written for AI agents (Antigravity, Claude Code, Codex, Cursor, etc.) installing, configuring, inspecting, or extending this repository. For human-oriented documentation, see `README.md` or `docs/README.*.md`.
+
+## Quick Install (Agent Executable Steps)
+
+1. Clone this repository into Antigravity's plugin directory named `context-monitor`:
+   - Windows (PowerShell): `git clone https://github.com/FableFatale/antigravity-context-monitor.git "$env:USERPROFILE\.gemini\config\plugins\context-monitor"`
+   - macOS / Linux: `git clone https://github.com/FableFatale/antigravity-context-monitor.git ~/.gemini/config/plugins/context-monitor`
+2. Install MCP App dependencies:
+   - `cd <plugin_dir>/mcp && npm install`
+3. Enable `context-monitor` in Antigravity Customizations / Plugins (do NOT hand-edit `~/.gemini/config/config.json`).
+4. Verify:
+   - Sidecar syntax: `node --check sidecars/context-monitor/server.mjs`
+   - Hook syntax: `node --check hooks/context-guard.mjs`
+   - MCP App syntax: `node --check mcp/server.mjs`
+
+## Repository Map
+
+- [plugin.json](plugin.json): Antigravity plugin manifest (`name`, `displayName`, `version`, `logo`, `suggestedPrompts`).
+- [mcp_config.json](mcp_config.json): Registers the `context-monitor` MCP App server (`node ${PLUGIN_ROOT}/mcp/server.mjs`).
+- [hooks.json](hooks.json): Registers the `PreInvocation` lifecycle hook (`node hooks/context-guard.mjs`).
+- [sidecars/context-monitor/sidecar.json](sidecars/context-monitor/sidecar.json): Managed Antigravity Sidecar declaration (`restart_policy: "always"`, `AUX_PANE` web UI).
+- [sidecars/context-monitor/server.mjs](sidecars/context-monitor/server.mjs): Core zero-dependency Node.js engine. Read-only parser for local Antigravity transcripts & SQLite conversation metadata, per-model dynamic threshold recommender, HTTP API server (when executed directly), and exported functions (when imported by `mcp/server.mjs`).
+- [sidecars/context-monitor/index.html](sidecars/context-monitor/index.html): Single-file dashboard UI (zero frontend frameworks, custom Palermo light controls, zero native `<select>` elements, slide-over settings drawer, responsive 24h & 53-week heatmap).
+- [mcp/server.mjs](mcp/server.mjs): Official Antigravity MCP App server exposing `ui://context-monitor/app.html` (`global` left-sidebar full-page + `aux_pane` right-pane entrypoints) and app-only RPC tools bridging `window.fetch('./api/...')` calls.
+- [hooks/context-guard.mjs](hooks/context-guard.mjs): `PreInvocation` hook sharing `auto-compact.json`, bypassing `/compact`, rendering 0-token inline user banners, and enforcing `hook_guard` / `hook_block`.
+- [skills/context-monitor/SKILL.md](skills/context-monitor/SKILL.md): Bundled Antigravity `/context-monitor` skill.
+- [AGENTS.md](AGENTS.md): Architecture invariants, coding conventions, and debugging rules for agents modifying this repo.
+
+## Runtime Data & API Contracts
+
+- Persistent user config path (never committed): `<ANTIGRAVITY_DATA_DIR>/plugin_data/context-monitor/auto-compact.json`.
+- Read-only local data sources: Antigravity local conversation logs & SQLite metadata (`conversations/*.db`). Zero outbound telemetry.
+- HTTP / MCP App bridged endpoints:
+  - `GET ./api/overview?id=<convId|all>&day=<YYYY-MM-DD>&model=<model|all>&hour=<0-23>`
+  - `GET ./api/auto-compact`
+  - `POST ./api/auto-compact` (`{ enabled, thresholdMode: 'auto'|'manual_next'|'manual_fixed', thresholdK, mode: 'toast_confirm'|'ui_send'|'hook_guard'|'hook_block'|'notify', idleSeconds, cooldownSeconds }`)
+  - `POST ./api/auto-compact/trigger-now`
+  - `POST ./api/auto-compact/snooze` (`{ bumpK?: number }`)
+  - `POST ./api/auto-compact/test`
+
+## Platform Capabilities
+
+- Cross-platform (Windows, macOS, Linux): Dashboard UI, Left-Sidebar MCP App, Sidecar UI, Read-only Analytics, Dynamic Threshold Engine, `PreInvocation` Hooks (`hook_guard`, `hook_block`).
+- Windows-native: Non-focus-stealing bottom-right Desktop Toast (`toast_confirm`) and automated `/compact` window dispatch (`ui_send`) via unsandboxed Sidecar PowerShell (`-EncodedCommand` UTF-16LE Base64).
+
+## Human Documentation
+
+- [README.md](README.md): English (Default)
+- [docs/README.zh-CN.md](docs/README.zh-CN.md): Simplified Chinese (简体中文)
+- [docs/README.ja.md](docs/README.ja.md): Japanese (日本語)
+- [docs/README.fr.md](docs/README.fr.md): French (Français)
+- [docs/README.de.md](docs/README.de.md): German (Deutsch)
