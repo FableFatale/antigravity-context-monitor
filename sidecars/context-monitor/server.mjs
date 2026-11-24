@@ -513,6 +513,7 @@ function syncAutoCompactConfigFromDisk() {
 function runPowerShellCompact(mode, toastMeta = null, options = {}) {
   const requireForeground = Boolean(options.requireForeground);
   const minInputIdleMs = Math.max(0, Number(options.minInputIdleMs) || 0);
+  const keepClipboard = Boolean(options.keepClipboard);
   return new Promise((resolve) => {
     const sendKeysLines = [
       '$procs = @(Get-Process | Where-Object { $_.MainWindowHandle -ne 0 -and ($_.ProcessName -match "antigravity" -or $_.MainWindowTitle -match "Antigravity") })',
@@ -553,10 +554,13 @@ function runPowerShellCompact(mode, toastMeta = null, options = {}) {
             '  Add-Type -AssemblyName UIAutomationTypes -ErrorAction SilentlyContinue',
             '  $rootEl = [System.Windows.Automation.AutomationElement]::FromHandle($proc.MainWindowHandle)',
             '  if ($null -ne $rootEl) {',
+            '    $winRect = $rootEl.Current.BoundingRectangle',
             '    $editCond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Edit)',
             '    $edits = $rootEl.FindAll([System.Windows.Automation.TreeScope]::Descendants, $editCond)',
             '    foreach ($ed in $edits) {',
-            '      if ($ed.Current.IsKeyboardFocusable -and $ed.Current.Name -notmatch "Search|搜索|検索|Rechercher|Suchen") {',
+            '      $er = $ed.Current.BoundingRectangle',
+            '      $inChatZone = ($winRect.Width -le 0) -or (($er.Left -lt ($winRect.Left + $winRect.Width * 0.58)) -and ($er.Top -gt ($winRect.Top + $winRect.Height * 0.55)))',
+            '      if ($ed.Current.IsKeyboardFocusable -and $inChatZone -and $ed.Current.Name -notmatch "Search|搜索|検索|Rechercher|Suchen") {',
             '        $ed.SetFocus()',
             '        Start-Sleep -Milliseconds 80',
             '        break',
@@ -574,7 +578,7 @@ function runPowerShellCompact(mode, toastMeta = null, options = {}) {
       'Start-Sleep -Milliseconds 140',
       '[System.Windows.Forms.SendKeys]::SendWait("{ENTER}")',
       'Start-Sleep -Milliseconds 130',
-      'if ($null -ne $oldClip) { try { [System.Windows.Forms.Clipboard]::SetText($oldClip) } catch {} }',
+      ...(keepClipboard ? [] : ['if ($null -ne $oldClip) { try { [System.Windows.Forms.Clipboard]::SetText($oldClip) } catch {} }']),
     ];
 
     let psScript;
@@ -748,12 +752,11 @@ function runPowerShellCompact(mode, toastMeta = null, options = {}) {
   });
 }
 
-function getLatestActiveWatermark() {
+function getLatestActiveWatermark(maxIdleMs = 0) {
   const convs = getAllConversations();
   const now = Date.now();
-  // Check most recently modified conversations (within 15 minutes)
   for (const c of convs.slice(0, 5)) {
-    if (now - c.mtimeMs > 15 * 60 * 1000) continue;
+    if (maxIdleMs > 0 && now - c.mtimeMs > maxIdleMs) continue;
     if (!c.events || c.events.length === 0) continue;
     const lastEv = c.events[c.events.length - 1];
     const lastCp = [...c.events].reverse().find((e) => e.type === 'CHECKPOINT');
@@ -860,15 +863,50 @@ function fmtKShort(n) {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n);
 }
 
+async function waitForTranscriptUpdate(tPath, beforeSize, beforeMtime, maxWaitMs = 1500) {
+  if (!tPath || !existsSync(tPath)) return false;
+  const start = Date.now();
+  while (Date.now() - start < maxWaitMs) {
+    await new Promise((r) => setTimeout(r, 180));
+    try {
+      const st = statSync(tPath);
+      if (st.size !== beforeSize || st.mtimeMs > beforeMtime) return true;
+    } catch {}
+  }
+  return false;
+}
+
 async function triggerCompactNow(source = 'manual_toast') {
   syncAutoCompactConfigFromDisk();
   if (autoCompactRunning) return { skipped: true, reason: 'BUSY', message: '当前有触发任务正在执行中' };
-  const target = getLatestActiveWatermark();
+  const target = getLatestActiveWatermark(0);
   const eff = resolveEffectiveThreshold(target);
   const now = Date.now();
+  const tPath = target?.convId ? getTranscriptPath(target.convId) : null;
+  let beforeSize = 0;
+  let beforeMtime = 0;
+  if (tPath && existsSync(tPath)) {
+    try {
+      const st = statSync(tPath);
+      beforeSize = st.size;
+      beforeMtime = st.mtimeMs;
+    } catch {}
+  }
   autoCompactRunning = true;
   try {
-    const res = await runPowerShellCompact('ui_send');
+    const res = await runPowerShellCompact('ui_send', null, { keepClipboard: true });
+    let verified = Boolean(res.ok);
+    let copiedOnly = false;
+    let finalMsg = res.message;
+    let finalReason = res.reason;
+    if (res.ok && tPath) {
+      verified = await waitForTranscriptUpdate(tPath, beforeSize, beforeMtime, 1500);
+      if (!verified) {
+        copiedOnly = true;
+        finalReason = 'COPIED_FOCUS_IN_PANEL';
+        finalMsg = '已复制 /compact 到剪贴板（点击面板按钮时焦点在右侧面板内，请点一下左侧聊天框按 Ctrl+V 回车）';
+      }
+    }
     const entry = {
       ts: now,
       convId: target?.convId || 'manual-now',
@@ -876,19 +914,20 @@ async function triggerCompactNow(source = 'manual_toast') {
       contextTotal: target?.contextTotal || 0,
       thresholdTokens: eff.effectiveTokens,
       mode: source,
-      ok: Boolean(res.ok),
-      reason: res.reason,
-      message: res.message,
+      ok: verified,
+      copiedOnly,
+      reason: finalReason,
+      message: finalMsg,
       isTest: false,
     };
     autoCompactConfig.lastTriggeredAt = now;
     autoCompactConfig.lastTriggeredConvId = entry.convId;
-    if (target?.lastEventTs) autoCompactConfig.lastTriggeredEventTs = target.lastEventTs;
+    if (verified && target?.lastEventTs) autoCompactConfig.lastTriggeredEventTs = target.lastEventTs;
     autoCompactConfig.snoozedUntil = 0;
-    if (res.ok && autoCompactConfig.thresholdMode === 'manual_next') {
+    if (verified && autoCompactConfig.thresholdMode === 'manual_next') {
       autoCompactConfig.thresholdMode = 'auto';
     }
-    autoCompactConfig.lastTriggeredStatus = `${res.ok ? '成功' : '未触发'}: ${res.message}`;
+    autoCompactConfig.lastTriggeredStatus = `${verified ? '成功' : '已复制待粘贴'}: ${finalMsg}`;
     autoCompactConfig.history = [entry, ...(autoCompactConfig.history || [])].slice(0, 20);
     saveAutoCompactConfig(autoCompactConfig);
     try { autoCompactConfigMtime = statSync(AUTO_COMPACT_PATH).mtimeMs; } catch {}
@@ -901,7 +940,7 @@ async function triggerCompactNow(source = 'manual_toast') {
 async function evaluateAutoCompact(forceTest = false) {
   syncAutoCompactConfigFromDisk();
   if (autoCompactRunning) return { skipped: true, reason: 'BUSY' };
-  const target = getLatestActiveWatermark();
+  const target = getLatestActiveWatermark(forceTest ? 0 : 30 * 60 * 1000);
   const eff = resolveEffectiveThreshold(target);
   const now = Date.now();
   const thresholdTokens = eff.effectiveTokens;

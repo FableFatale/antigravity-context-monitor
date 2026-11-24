@@ -371,3 +371,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
+
+setInterval(() => {
+  evaluateAutoCompact(false).catch(() => {});
+}, 3000);

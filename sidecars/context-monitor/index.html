@@ -1447,7 +1447,8 @@ const I18N = {
     evDrop: 'Cache Drop',
     evNormal: 'Normal',
     toastSaved: 'Settings saved',
-    toastTriggered: 'Sent /compact',
+    toastTriggered: '✅ Sent /compact and compaction started',
+    toastCopiedFocus: '📋 Copied /compact! Focus was in this panel — click the chat input and press Ctrl+V + Enter',
     toastBumped: 'Threshold bumped +20K for this turn',
     toastTested: 'Test triggered',
     toastCopied: 'Copied /compact',
@@ -1631,7 +1632,8 @@ const I18N = {
     evDrop: '缓存骤降',
     evNormal: '正常',
     toastSaved: '设置已保存',
-    toastTriggered: '已触发 /compact',
+    toastTriggered: '✅ 已成功向聊天框发送 /compact 并触发压缩',
+    toastCopiedFocus: '📋 已复制 /compact！点击面板时焦点在面板内，请点左侧聊天框按 Ctrl+V 回车',
     toastBumped: '本次阈值已提高 20K',
     toastTested: '已触发测试',
     toastCopied: '已复制 /compact',
@@ -1815,7 +1817,8 @@ const I18N = {
     evDrop: 'キャッシュ急落',
     evNormal: '通常',
     toastSaved: '設定を保存しました',
-    toastTriggered: '/compact を送信しました',
+    toastTriggered: '✅ /compact を送信し圧縮を開始しました',
+    toastCopiedFocus: '📋 /compact をコピーしました（チャット入力欄をクリックして Ctrl+V → Enter を押してください）',
     toastBumped: '今回のしきい値を +20K 延長しました',
     toastTested: 'テストを実行しました',
     toastCopied: '/compact をコピーしました',
@@ -1999,7 +2002,8 @@ const I18N = {
     evDrop: 'Chute cache',
     evNormal: 'Normal',
     toastSaved: 'Paramètres enregistrés',
-    toastTriggered: '/compact envoyé',
+    toastTriggered: '✅ /compact envoyé et compression lancée',
+    toastCopiedFocus: '📋 /compact copié ! Cliquez dans la zone de chat et appuyez sur Ctrl+V + Entrée',
     toastBumped: 'Seuil augmenté de +20K',
     toastTested: 'Test déclenché',
     toastCopied: '/compact copié',
@@ -2183,7 +2187,8 @@ const I18N = {
     evDrop: 'Cache-Einbruch',
     evNormal: 'Normal',
     toastSaved: 'Einstellungen gespeichert',
-    toastTriggered: '/compact gesendet',
+    toastTriggered: '✅ /compact gesendet und Komprimierung gestartet',
+    toastCopiedFocus: '📋 /compact kopiert! Bitte ins Chat-Eingabefeld klicken und Strg+V + Enter drücken',
     toastBumped: 'Schwelle einmalig um +20K erhöht',
     toastTested: 'Test ausgelöst',
     toastCopied: '/compact kopiert',
@@ -3275,10 +3280,16 @@ async function triggerCompactImmediately(btnEl) {
   if (btnEl) { btnEl.disabled = true; btnEl.textContent = dict.compactingBtn; }
   try {
     acToastTestVisible = false;
-    await fetch('./api/auto-compact/trigger-now', { method: 'POST' });
+    const res = await fetch('./api/auto-compact/trigger-now', { method: 'POST' });
+    let payload = {};
+    try { payload = await res.json(); } catch {}
     acInitialized = false;
     await fetchData();
-    showUiToast(T().toastTriggered);
+    if (payload?.result?.copiedOnly || (payload?.result && !payload.result.ok)) {
+      showUiToast(dict.toastCopiedFocus || dict.toastCopied);
+    } else {
+      showUiToast(dict.toastTriggered);
+    }
   } finally {
     if (btnEl) { btnEl.disabled = false; btnEl.textContent = oldTxt; }
   }
