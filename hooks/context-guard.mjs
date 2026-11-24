@@ -116,17 +116,14 @@ function analyzeTranscript(transcriptPath) {
     break;
   }
 
-  // Extract deterministic pre-checkpoint state ledger if a recent CHECKPOINT exists
-  let ledger = null;
-  if (lastCpIdx >= 0 && latestStep - lastCpStep <= 15) {
-    const startIdx = Math.max(0, prevCpIdx + 1, lastCpIdx - 180);
+  function extractSegmentLedger(startIdx, endIdx, checkpointStep = 0) {
     const editedMap = new Map();
     const readMap = new Map();
     const commands = [];
     let lastSteps = null;
     let lastFocus = '';
 
-    for (let i = startIdx; i < lastCpIdx; i++) {
+    for (let i = Math.max(0, startIdx); i < Math.min(objs.length, endIdx); i++) {
       const o = objs[i];
       if (!Array.isArray(o.tool_calls)) continue;
       for (const tc of o.tool_calls) {
@@ -171,23 +168,36 @@ function analyzeTranscript(transcriptPath) {
       .map(([p, range]) => `${p} [${range}]`);
     const recentCommands = [...new Set(commands.reverse())].slice(0, 5);
 
-    if (editedFiles.length > 0 || readFiles.length > 0 || recentCommands.length > 0 || lastSteps) {
-      ledger = {
-        checkpointStep: lastCpStep,
-        editedFiles,
-        readFiles,
-        recentCommands,
-        lastSteps,
-        lastFocus,
-      };
+    if (editedFiles.length === 0 && readFiles.length === 0 && recentCommands.length === 0 && !lastSteps) {
+      return null;
     }
+    return {
+      checkpointStep,
+      editedFiles,
+      readFiles,
+      recentCommands,
+      lastSteps,
+      lastFocus,
+    };
   }
+
+  // Extract deterministic pre-checkpoint state ledger if a recent CHECKPOINT exists
+  let ledger = null;
+  if (lastCpIdx >= 0 && latestStep - lastCpStep <= 15) {
+    const startIdx = Math.max(0, prevCpIdx + 1, lastCpIdx - 180);
+    ledger = extractSegmentLedger(startIdx, lastCpIdx, lastCpStep);
+  }
+
+  // Also extract current active segment ledger for Auto-Branch Subagent Handoff when crossing threshold
+  const activeStartIdx = Math.max(0, lastCpIdx + 1, objs.length - 180);
+  const activeLedger = extractSegmentLedger(activeStartIdx, objs.length, latestStep);
 
   return {
     snap: latestSnap,
     latestStep,
     lastCpStep,
     ledger,
+    activeLedger,
   };
 }
 
@@ -209,6 +219,30 @@ function main() {
     process.stdout.write('{}');
     return;
   }
+
+  const convId = payload.conversationId || 'unknown';
+  const now = Date.now();
+  const state = loadJson(STATE_PATH, {});
+  const convState = state[convId] || {};
+
+  // Handle Stop lifecycle hook: record exact turn termination & fullyIdle flag so Auto-Compact never fires mid-turn
+  if (payload.hookEventName === 'Stop') {
+    convState.turnActive = false;
+    convState.fullyIdle = payload.fullyIdle !== false;
+    convState.stoppedAt = now;
+    convState.terminationReason = payload.terminationReason || '';
+    state[convId] = convState;
+    saveJson(STATE_PATH, state);
+    process.stdout.write('{}');
+    return;
+  }
+
+  // Mark turn active on PreInvocation
+  convState.turnActive = true;
+  convState.fullyIdle = false;
+  convState.startedAt = now;
+  state[convId] = convState;
+  saveJson(STATE_PATH, state);
 
   // Never interfere with an explicit /compact command
   const lastInput = String(payload.lastUserInput || '').trim();
@@ -248,11 +282,7 @@ function main() {
     return;
   }
 
-  const { snap, lastCpStep, ledger } = analysis;
-  const convId = payload.conversationId || 'unknown';
-  const now = Date.now();
-  const state = loadJson(STATE_PATH, {});
-  const convState = state[convId] || {};
+  const { snap, lastCpStep, ledger, activeLedger } = analysis;
 
   const VALID_LANGS = new Set(['en', 'zh', 'ja', 'fr', 'de']);
   const detectOsLang = () => {
@@ -467,13 +497,34 @@ function main() {
   const bannerMd = tx.head + (mode === 'ui_send' ? tx.ui_send : mode === 'toast_confirm' ? tx.toast_confirm : tx.other);
 
   if (mode === 'hook_guard' || mode === 'ui_send') {
+    const branchLines = [
+      `[Context Guard · Threshold Reached (${fmtK(snap.contextTotal)} / ${fmtK(thresholdTokens)})]`,
+      `Active context has reached the compaction threshold. Auto-Compact will execute automatically as soon as this turn terminates (` +
+        `Stop hook with fullyIdle=true).`,
+    ];
+    if (enableOffload) {
+      branchLines.push(
+        `AUTO-BRANCH SESSION HANDOFF DIRECTIVE: If the user's request requires multi-step implementation, code edits, or test runs before this turn ends, you SHOULD immediately spawn a clean branched session via \`invoke_subagent({ TypeName: "self", Workspace: "inherit", Role: "Branched Session Executor", Prompt: "<Compact Task Brief + Active File Ledger>" })\`. ` +
+          `The branched session starts with a fresh ~25K context window and full write/command capabilities, returning only the compact result here so this parent session terminates quickly and compacts cleanly.`
+      );
+      if (activeLedger) {
+        if (activeLedger.editedFiles.length > 0) {
+          branchLines.push(`- Active Modified Files to include in subagent handoff: ${activeLedger.editedFiles.slice(0, 6).join(', ')}`);
+        }
+        if (activeLedger.readFiles.length > 0) {
+          branchLines.push(`- Active Inspected Files: ${activeLedger.readFiles.slice(0, 5).join(', ')}`);
+        }
+      }
+    } else {
+      branchLines.push(
+        `Finish the current atomic step cleanly, avoid starting large broad searches or reading huge files inline, and keep output concise so compaction can run smoothly.`
+      );
+    }
     const out = {
       injectSteps: [
         {
           systemMessage: {
-            systemMessage:
-              `[Context Guard] Active context is ${fmtK(snap.contextTotal)} tokens (threshold ${fmtK(thresholdTokens)}). ` +
-              `Finish the current atomic step cleanly, avoid starting large broad searches or reading huge files inline (delegate to \`invoke_subagent\` if unavoidable), and keep output concise so compaction can run smoothly.`,
+            systemMessage: branchLines.join('\n'),
             metadata: {
               user_markdown: bannerMd,
             },

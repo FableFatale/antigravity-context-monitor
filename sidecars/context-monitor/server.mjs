@@ -57,6 +57,10 @@ function parseConversation(id) {
   let title = '';
   let errorCount = 0;
   let currentModel = '';
+  let lastRawType = '';
+  let lastRawStatus = 'DONE';
+  let lastRawToolCalls = 0;
+  const runningTaskIds = new Set();
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -66,6 +70,19 @@ function parseConversation(id) {
       obj = JSON.parse(trimmed);
     } catch {
       continue;
+    }
+
+    lastRawType = obj.type || '';
+    lastRawStatus = obj.status || 'DONE';
+    lastRawToolCalls = Array.isArray(obj.tool_calls) ? obj.tool_calls.length : 0;
+    if (obj.type === 'USER_INPUT' || obj.type === 'CHECKPOINT') {
+      runningTaskIds.clear();
+    } else if (obj.status === 'RUNNING' && typeof obj.content === 'string') {
+      const tm = obj.content.match(/task id:\s*([^\s\n"]+)/i);
+      if (tm && tm[1]) runningTaskIds.add(tm[1]);
+    } else if (obj.type === 'SYSTEM_MESSAGE' && typeof obj.content === 'string') {
+      const fm = obj.content.match(/Task id "([^"]+)" finished/i) || obj.content.match(/sender=([^\s]+)/i);
+      if (fm && fm[1]) runningTaskIds.delete(fm[1]);
     }
 
     if (typeof obj.content === 'string') {
@@ -112,6 +129,10 @@ function parseConversation(id) {
       detail = obj.content.slice(0, 600);
     }
 
+    const liveContextTokens = obj.type === 'CHECKPOINT'
+      ? ((output > 0 ? output : 3000) + 26500)
+      : contextTotal;
+
     events.push({
       convId: id,
       convTitle: title || id.slice(0, 8),
@@ -127,6 +148,7 @@ function parseConversation(id) {
       cacheRead,
       output,
       contextTotal,
+      liveContextTokens,
       hitRate: Number(hitRate.toFixed(1)),
       cacheDrop,
       afterCompaction,
@@ -141,6 +163,11 @@ function parseConversation(id) {
     if (!e.model) e.model = resolvedModel;
   }
 
+  const turnCompleted =
+    (lastRawType === 'CHECKPOINT' && lastRawStatus === 'DONE') ||
+    (lastRawType === 'PLANNER_RESPONSE' && lastRawStatus === 'DONE' && lastRawToolCalls === 0);
+  const transcriptBusy = !turnCompleted || runningTaskIds.size > 0;
+
   const data = {
     id,
     title: resolvedTitle,
@@ -148,6 +175,10 @@ function parseConversation(id) {
     mtimeMs: st.mtimeMs,
     size: st.size,
     errorCount,
+    transcriptBusy,
+    lastRawType,
+    lastRawToolCalls,
+    runningTasksCount: runningTaskIds.size,
     events,
   };
   parseCache.set(id, { mtimeMs: st.mtimeMs, size: st.size, data });
@@ -331,10 +362,12 @@ function buildOverview(targetId, dayFilter, modelFilter, hourFilter) {
     latestWatermark: latestEvent ? {
       convId: latestEvent.convId,
       convTitle: latestEvent.convTitle,
-      contextTokens: latestEvent.contextTotal,
+      contextTokens: latestEvent.liveContextTokens ?? latestEvent.contextTotal,
+      preCompactTokens: latestEvent.type === 'CHECKPOINT' ? latestEvent.contextTotal : 0,
+      justCompacted: latestEvent.type === 'CHECKPOINT',
       threshold: advice.recommendedCompact,
       ceiling: advice.observedCeiling,
-      pct: Math.min(100, Math.round((latestEvent.contextTotal / advice.recommendedCompact) * 100)),
+      pct: Math.min(100, Math.round(((latestEvent.liveContextTokens ?? latestEvent.contextTotal) / advice.recommendedCompact) * 100)),
     } : null,
     thresholdAdvice: advice,
     conversations: allConvs.map((c) => ({ id: c.id, title: c.title, model: c.model, mtimeMs: c.mtimeMs })),
@@ -752,19 +785,40 @@ function runPowerShellCompact(mode, toastMeta = null, options = {}) {
   });
 }
 
+function loadHookState() {
+  try {
+    const p = join(PLUGIN_DATA_DIR, 'hook-state.json');
+    if (existsSync(p)) return JSON.parse(readFileSync(p, 'utf-8'));
+  } catch {}
+  return {};
+}
+
 function getLatestActiveWatermark(maxIdleMs = 0) {
   const convs = getAllConversations();
   const now = Date.now();
+  const hookState = loadHookState();
   for (const c of convs.slice(0, 5)) {
     if (maxIdleMs > 0 && now - c.mtimeMs > maxIdleMs) continue;
     if (!c.events || c.events.length === 0) continue;
     const lastEv = c.events[c.events.length - 1];
     const lastCp = [...c.events].reverse().find((e) => e.type === 'CHECKPOINT');
+    const hs = hookState[c.id] || {};
+    const hookBusy = Boolean(
+      hs.turnActive &&
+      !hs.fullyIdle &&
+      (hs.startedAt || 0) > (hs.stoppedAt || 0) &&
+      now - (hs.startedAt || 0) < 10 * 60 * 1000
+    );
+    const agentBusy = Boolean(c.transcriptBusy || hookBusy);
+    const liveTokens = lastEv.liveContextTokens ?? lastEv.contextTotal;
     return {
       convId: c.id,
       convTitle: c.title,
       model: lastEv.model || c.model || 'unknown',
-      contextTotal: lastEv.contextTotal,
+      contextTotal: liveTokens,
+      preCompactTokens: lastEv.type === 'CHECKPOINT' ? lastEv.contextTotal : 0,
+      justCompacted: lastEv.type === 'CHECKPOINT',
+      agentBusy,
       hitRate: lastEv.hitRate,
       lastEventTs: lastEv.ts,
       lastEventType: lastEv.type,
@@ -962,6 +1016,7 @@ async function evaluateAutoCompact(forceTest = false) {
     }
     if (target.contextTotal < thresholdTokens) return { skipped: true, reason: 'BELOW_THRESHOLD' };
     if (now < (autoCompactConfig.snoozedUntil || 0)) return { skipped: true, reason: 'SNOOZED' };
+    if (target.agentBusy) return { skipped: true, reason: 'AGENT_WORKING' };
     if (now - target.lastEventTs < idleMs) return { skipped: true, reason: 'SESSION_BUSY' };
     if (now - (autoCompactConfig.lastTriggeredAt || 0) < cooldownMs) return { skipped: true, reason: 'COOLDOWN' };
   }
@@ -1054,7 +1109,7 @@ function getAutoCompactStatus() {
     snoozeLeftSec,
     activeTarget: target,
     needsManualAlert: overThreshold,
-    showToastPrompt: Boolean(overThreshold && snoozeLeftSec === 0 && (autoCompactConfig.mode === 'toast_confirm' || autoCompactConfig.mode === 'notify')),
+    showToastPrompt: Boolean(overThreshold && !target?.agentBusy && snoozeLeftSec === 0 && (autoCompactConfig.mode === 'toast_confirm' || autoCompactConfig.mode === 'notify')),
   };
 }
 
