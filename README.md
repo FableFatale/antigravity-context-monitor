@@ -31,8 +31,12 @@ Long Gemini sessions inside Antigravity silently accumulate context until an aut
 - **Left-Sidebar Full-Page MCP App** and **Right-Pane Sidecar Dashboard** sharing one live UI.
 - **Calm, Distraction-Free First Screen**: A single live context bar at the top shows your active session's current occupancy, early warning line, and compaction threshold — while low-frequency settings stay tucked inside a slide-over drawer.
 - **Dynamic Per-Model Thresholds**: Learns from your historical `CHECKPOINT` triggers and non-compaction cache drops to suggest an optimal compaction threshold per model. Manual overrides apply once by default and automatically return to adaptive mode after the next compaction (or can be locked).
+- **3-Layer Context Lifecycle Architecture**:
+  1. **Soft-Warning Subagent Offloading (`≥70%` threshold)**: Before context bloats to the compaction cliff, the `PreInvocation` hook guides the agent to offload multi-file searches, exploratory reads, and verbose test loops to isolated subagents (`invoke_subagent`) — preserving a 95%+ main-thread prefix cache hit rate.
+  2. **Post-Compaction Deterministic Memory Ledger (`CHECKPOINT` recovery)**: On the very first turn after a compaction (`CHECKPOINT`), the hook automatically scans pre-checkpoint tool calls (`<15ms`, zero LLM cost) and re-injects an exact manifest of modified files, inspected line ranges, recent commands, and active task steps — curing post-compaction symbol/line-number amnesia.
+  3. **Zero-Focus-Steal Silent Auto-Compact**: Only sends `/compact` (with double-Enter autocomplete pass-through, per-turn deduplication, and Windows UIAutomation input focus recovery) when Antigravity is in the foreground and your keyboard/mouse are idle.
 - **Interactive Analytics & Cross-Filtering**: Switch between `24h Hourly` charts and a full-width `53-Week Activity Heatmap`. Click any model, session (with full search), or hour bar to cross-filter the entire dashboard with one-click removable filter chips.
-- **Proactive Compaction Strategies**: Choose between non-focus-stealing Desktop Toast confirmation, unattended idle `/compact` automation, or cross-platform `PreInvocation` Hooks.
+- **5-Language Auto-Detection**: Automatically matches your system language (`English`, `简体中文`, `日本語`, `Français`, `Deutsch`) with a live topbar switcher.
 
 ---
 

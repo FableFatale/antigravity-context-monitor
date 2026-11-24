@@ -31,8 +31,12 @@ In längeren Gemini-Sitzungen wächst der Kontext in Antigravity unbemerkt an, b
 - **Vollbild-MCP-App (linke Seitenleiste)** und **Sidecar-Dashboard (rechter Bereich)** auf Basis einer gemeinsamen Live-Oberfläche.
 - **Aufgeräumte Startansicht**: Eine kompakte Statusleiste oben zeigt aktuelle Kontextauslastung, Frühwarnmarke und Komprimierungsschwelle der aktiven Sitzung — seltener genutzte Einstellungen ruhen sauber in einem seitlichen Drawer.
 - **Dynamische Schwellenwerte pro Modell**: Lernt aus vergangenen `CHECKPOINT`-Ereignissen und Cache-Einbrüchen, um je Modell den passenden Schwellenwert vorzuschlagen. Manuelle Anpassungen gelten standardmäßig einmalig für die nächste Komprimierung und kehren danach in den Automatikmodus zurück (optional sperrbar).
+- **3-Schichten-Kontext-Lebenszyklus-Architektur**:
+  1. **Vorwarnung Subagent-Auslagerung (≥70 % Schwelle)**: Der `PreInvocation`-Hook weist den Agenten an, umfangreiche Dateisuchen und Testläufe an `invoke_subagent` auszulagern, um die Prefix-Cache-Trefferquote (>95 %) im Hauptthread zu schützen.
+  2. **Deterministisches Post-Komprimierungs-Ledger (`CHECKPOINT`-Recovery)**: Direkt in der ersten Runde nach einer Komprimierung stellt der Hook in `<15 ms` die exakte Liste geänderter/gelesener Dateien und den Aufgabenstatus wieder her — verhindert Kontextverlust und Halluzinationen.
+  3. **Fokusfreundliches stilles Auto-Compact**: Sendet `/compact` nur, wenn Antigravity im Vordergrund ist und Tastatur/Maus ruhen (Doppel-Enter für Autocomplete, Runden-Deduplizierung und Windows-UIAutomation-Fokus).
 - **Interaktive Analyse & Cross-Filtering**: Wechseln Sie zwischen `24h-Stundenansicht` und vollbreiter `53-Wochen-Heatmap`. Ein Klick auf ein Modell, eine Sitzung (inkl. Volltextsuche) oder eine Stunde filtert das gesamte Dashboard über klar sichtbare Filter-Chips in der Kopfleiste.
-- **5 Komprimierungsstrategien**: Fokusfreundliche Desktop-Toast-Bestätigung, automatisches `/compact` im Leerlauf oder plattformübergreifende `PreInvocation`-Hooks.
+- **5 Sprachen mit Auto-Erkennung**: Erkennt automatisch die Systemsprache (Deutsch, English, 简体中文, 日本語, Français).
 
 ---
 

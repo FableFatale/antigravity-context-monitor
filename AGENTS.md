@@ -16,7 +16,10 @@ This plugin runs two coordinated entrypoints over one shared core (`sidecars/con
 3. **PreInvocation Hook (`hooks/context-guard.mjs`)**:
    - Reads the shared `plugin_data/context-monitor/auto-compact.json`.
    - Always bypasses `/compact` prompts immediately (`{}`).
-   - Renders 0-token inline user notices via `metadata.user_markdown` and enforces `hook_guard` / `hook_block`.
+   - Implements the 3-layer context lifecycle engine:
+     1. **Post-Compaction Deterministic Memory Ledger (`postCompactLedger`)**: Detects recent `CHECKPOINT` steps in `transcript.jsonl` (tracked per conversation via `lastLedgerCheckpointStep` in `hook-state.json`) and injects an exact manifest of pre-checkpoint modified files, inspected file line ranges, shell commands, and task checklist steps.
+     2. **Soft-Warning Tiered Subagent Offloading (`subagentOffload`)**: Between 70% and 99% of the effective compaction threshold, guides the model to offload heavy searches/reads to `invoke_subagent` to protect the main-thread prefix cache.
+     3. **Threshold Guard (`hook_guard` / `hook_block` / `ui_send`)**: At >=100% threshold, injects wrap-up instructions and 5-language `metadata.user_markdown` banners.
 
 ## Critical Invariants (Do Not Break)
 

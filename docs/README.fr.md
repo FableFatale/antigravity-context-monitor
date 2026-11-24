@@ -31,8 +31,12 @@ Lors de longues sessions Gemini dans Antigravity, le contexte s'accumule silenci
 - **Application MCP plein écran (barre latérale gauche)** et **Tableau de bord Sidecar (panneau droit)** partageant une seule interface en temps réel.
 - **Premier écran épuré** : une barre synthétique en haut affiche l'occupation actuelle de la session active, le repère d'alerte précoce et le seuil de compression — les réglages avancés restent rangés dans un tiroir latéral coulissant.
 - **Seuils dynamiques par modèle** : analyse votre historique de `CHECKPOINT` et de pertes de cache pour recommander le seuil optimal par modèle. Un ajustement manuel ne s'applique qu'à la prochaine compression par défaut avant de revenir au mode adaptatif (verrouillage optionnel).
+- **Architecture de cycle de vie du contexte en 3 couches** :
+  1. **Délégation sous-agent en pré-alerte (seuil ≥70 %)** : le hook `PreInvocation` guide l'agent pour déléguer les recherches multi-fichiers et tests verbeux à `invoke_subagent`, préservant ainsi le cache de préfixe principal (>95 %).
+  2. **Registre mémoire déterministe post-compaction (`CHECKPOINT`)** : dès le premier tour après une compression, le hook extrait en `<15 ms` la liste exacte des fichiers modifiés/lus et l'état des tâches pour éviter toute amnésie ou hallucination post-compaction.
+  3. **Auto-Compact silencieux sans vol de focus** : envoie `/compact` uniquement lorsqu'Antigravity est au premier plan et le clavier/souris inactifs (double Entrée, déduplication par tour et ciblage UIAutomation).
 - **Analyse unifiée & filtrage croisé** : basculez entre vue `24h` et `Heatmap 53 semaines` pleine largeur. Cliquez sur un modèle, une session (avec recherche globale) ou une tranche horaire pour filtrer tout le tableau de bord via des étiquettes amovibles en un clic.
-- **5 stratégies de compression** : notification Toast Windows sans vol de focus, envoi automatique de `/compact` en période d'inactivité, ou hooks `PreInvocation` multiplateformes.
+- **5 langues auto-détectées** : s'adapte automatiquement à la langue du système (Français, English, 简体中文, 日本語, Deutsch).
 
 ---
 
