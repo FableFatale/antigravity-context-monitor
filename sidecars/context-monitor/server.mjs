@@ -409,6 +409,8 @@ const DEFAULT_AUTO_COMPACT = {
   idleSeconds: 8,
   cooldownSeconds: 120,
   mode: 'ui_send', // 'ui_send' | 'toast_confirm' | 'hook_guard' | 'hook_block' | 'notify'
+  subagentOffload: true,
+  postCompactLedger: true,
   snoozedUntil: 0,
   lastTriggeredAt: 0,
   lastTriggeredConvId: '',
@@ -513,20 +515,27 @@ function runPowerShellCompact(mode, toastMeta = null, options = {}) {
   const minInputIdleMs = Math.max(0, Number(options.minInputIdleMs) || 0);
   return new Promise((resolve) => {
     const sendKeysLines = [
-      '$proc = Get-Process | Where-Object { $_.MainWindowHandle -ne 0 -and ($_.ProcessName -match "antigravity" -or $_.MainWindowTitle -match "Antigravity") } | Select-Object -First 1',
-      'if (-not $proc) {',
+      '$procs = @(Get-Process | Where-Object { $_.MainWindowHandle -ne 0 -and ($_.ProcessName -match "antigravity" -or $_.MainWindowTitle -match "Antigravity") })',
+      'if ($procs.Count -eq 0) {',
       '  @{ ok = $false; reason = "NO_WINDOW_HANDLE"; message = "未检测到 Antigravity 桌面窗口句柄（请确认 Antigravity 窗口可见或改用 Hook 护航/硬拦截模式）" } | ConvertTo-Json -Compress',
       '  exit 0',
       '}',
+      '$fg = [Win32]::GetForegroundWindow()',
+      '$fgMatch = $procs | Where-Object { $_.MainWindowHandle -eq $fg } | Select-Object -First 1',
+      '$chatMatch = $procs | Where-Object { $_.MainWindowTitle -notmatch "^Context & Cache" } | Select-Object -First 1',
+      '$proc = if ($null -ne $fgMatch) { $fgMatch } elseif ($null -ne $chatMatch) { $chatMatch } else { $procs[0] }',
       ...(requireForeground
         ? [
-            '$fg = [Win32]::GetForegroundWindow()',
             '$fgPid = [uint32]0',
             '[Win32]::GetWindowThreadProcessId($fg, [ref]$fgPid) | Out-Null',
             '$fgProc = if ($fgPid -gt 0) { Get-Process -Id $fgPid -ErrorAction SilentlyContinue } else { $null }',
-            '$isAgyForeground = ($fg -eq $proc.MainWindowHandle) -or ($null -ne $fgProc -and ($fgProc.ProcessName -match "antigravity" -or $fgProc.MainWindowTitle -match "Antigravity"))',
+            '$isAgyForeground = ($null -ne $fgMatch) -or ($null -ne $fgProc -and ($fgProc.ProcessName -match "antigravity" -or $fgProc.MainWindowTitle -match "Antigravity"))',
             'if (-not $isAgyForeground) {',
             '  @{ ok = $false; deferred = $true; reason = "DEFERRED_NOT_FOREGROUND"; message = "Antigravity 当前不在前台，已静默挂起（不抢占其他窗口焦点）" } | ConvertTo-Json -Compress',
+            '  exit 0',
+            '}',
+            'if ($proc.MainWindowTitle -match "^Context & Cache") {',
+            '  @{ ok = $false; deferred = $true; reason = "DEFERRED_DASHBOARD_TAB"; message = "当前停留在 Context & Cache 全屏面板页，待切回聊天会话页后自动发送" } | ConvertTo-Json -Compress',
             '  exit 0',
             '}',
             `$inputIdleMs = [Win32]::GetInputIdleMs()`,
@@ -538,7 +547,23 @@ function runPowerShellCompact(mode, toastMeta = null, options = {}) {
         : [
             '[Win32]::ShowWindow($proc.MainWindowHandle, 9) | Out-Null',
             '[Win32]::SetForegroundWindow($proc.MainWindowHandle) | Out-Null',
-            'Start-Sleep -Milliseconds 220',
+            'Start-Sleep -Milliseconds 180',
+            'try {',
+            '  Add-Type -AssemblyName UIAutomationClient -ErrorAction SilentlyContinue',
+            '  Add-Type -AssemblyName UIAutomationTypes -ErrorAction SilentlyContinue',
+            '  $rootEl = [System.Windows.Automation.AutomationElement]::FromHandle($proc.MainWindowHandle)',
+            '  if ($null -ne $rootEl) {',
+            '    $editCond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Edit)',
+            '    $edits = $rootEl.FindAll([System.Windows.Automation.TreeScope]::Descendants, $editCond)',
+            '    foreach ($ed in $edits) {',
+            '      if ($ed.Current.IsKeyboardFocusable -and $ed.Current.Name -notmatch "Search|搜索|検索|Rechercher|Suchen") {',
+            '        $ed.SetFocus()',
+            '        Start-Sleep -Milliseconds 80',
+            '        break',
+            '      }',
+            '    }',
+            '  }',
+            '} catch {}',
           ]),
       '$oldClip = $null',
       'try { if ([System.Windows.Forms.Clipboard]::ContainsText()) { $oldClip = [System.Windows.Forms.Clipboard]::GetText() } } catch {}',
@@ -1052,6 +1077,8 @@ export function updateAutoCompactConfig(body = {}) {
   if (body.idleSeconds !== undefined) autoCompactConfig.idleSeconds = Math.max(2, Math.min(120, Number(body.idleSeconds) || 8));
   if (body.cooldownSeconds !== undefined) autoCompactConfig.cooldownSeconds = Math.max(15, Math.min(3600, Number(body.cooldownSeconds) || 120));
   if (VALID_MODES.has(body.mode)) autoCompactConfig.mode = body.mode;
+  if (typeof body.subagentOffload === 'boolean') autoCompactConfig.subagentOffload = body.subagentOffload;
+  if (typeof body.postCompactLedger === 'boolean') autoCompactConfig.postCompactLedger = body.postCompactLedger;
   autoCompactConfig.snoozedUntil = 0;
   saveAutoCompactConfig(autoCompactConfig);
   try { autoCompactConfigMtime = statSync(AUTO_COMPACT_PATH).mtimeMs; } catch {}

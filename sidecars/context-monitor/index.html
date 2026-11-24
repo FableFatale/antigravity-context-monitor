@@ -1183,6 +1183,18 @@
         </div>
       </div>
       <div id="acModeHint" style="font-size:11px;color:var(--subtle);line-height:1.45">-</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;padding-top:8px;border-top:1px dashed var(--border)">
+        <label class="p-check">
+          <input type="checkbox" id="acSubagentOffload" checked />
+          <span class="p-check-box"></span>
+          <span data-i18n="offloadLbl">软预警子代理分流（≥70% 阈值引导 invoke_subagent 保护缓存）</span>
+        </label>
+        <label class="p-check">
+          <input type="checkbox" id="acPostCompactLedger" checked />
+          <span class="p-check-box"></span>
+          <span data-i18n="ledgerLbl">压缩后防失忆账本注入（自动恢复修改/读取文件清单与进度）</span>
+        </label>
+      </div>
     </div>
 
     <!-- Timing -->
@@ -1336,6 +1348,8 @@ const I18N = {
     modeOptToast: 'Desktop Toast Confirmation',
     modeOptHookBlock: 'Hook Hard Gate (Pause Until /compact)',
     modeOptNotify: 'Notify & Copy /compact Only',
+    offloadLbl: 'Soft-warning Subagent Offloading (≥70% guides invoke_subagent to protect cache)',
+    ledgerLbl: 'Post-Compaction Memory Ledger (auto-restores modified/read file manifest)',
     timingTitle: 'Idle Wait & Cooldown',
     idleWaitLbl: 'Idle Wait (sec)',
     cooldownLbl: 'Cooldown (sec)',
@@ -1518,6 +1532,8 @@ const I18N = {
     modeOptToast: '小 Toast 提醒（点确定立马压缩）',
     modeOptHookBlock: 'Hook 硬拦截（到阈值暂停等 /compact）',
     modeOptNotify: '仅强提醒 + 复制 /compact',
+    offloadLbl: '软预警子代理分流（≥70% 阈值引导 invoke_subagent 保护缓存）',
+    ledgerLbl: '压缩后防失忆账本注入（自动恢复修改/读取文件清单与进度）',
     timingTitle: '空闲等待与冷却时间',
     idleWaitLbl: '空闲等待 (秒)',
     cooldownLbl: '最小冷却 (秒)',
@@ -1700,6 +1716,8 @@ const I18N = {
     modeOptToast: 'トースト確認通知（クリックで即時圧縮）',
     modeOptHookBlock: 'Hook ハードブロック（/compact まで一時停止）',
     modeOptNotify: '通知 + /compact コピーのみ',
+    offloadLbl: 'ソフト警告サブエージェント分流（≥70% で invoke_subagent へ誘導しキャッシュ保護）',
+    ledgerLbl: '圧縮後メモリ台帳の自動注入（変更/参照ファイル一覧と進捗を無損失復元）',
     timingTitle: 'アイドル待機とクールダウン',
     idleWaitLbl: 'アイドル待機 (秒)',
     cooldownLbl: '最小クールダウン (秒)',
@@ -1882,6 +1900,8 @@ const I18N = {
     modeOptToast: 'Confirmation Toast sur le bureau',
     modeOptHookBlock: 'Blocage Hook strict (pause avant /compact)',
     modeOptNotify: 'Notification + copie de /compact',
+    offloadLbl: 'Délégation sous-agent en pré-alerte (≥70% guide invoke_subagent pour protéger le cache)',
+    ledgerLbl: 'Registre mémoire post-compaction (restaure la liste des fichiers modifiés/lus)',
     timingTitle: 'Inactivité & Délai de recharge',
     idleWaitLbl: 'Inactivité (sec)',
     cooldownLbl: 'Recharge (sec)',
@@ -2064,6 +2084,8 @@ const I18N = {
     modeOptToast: 'Desktop-Toast-Bestätigung',
     modeOptHookBlock: 'Hook-Blockade (Pause bis /compact)',
     modeOptNotify: 'Nur Hinweis + /compact kopieren',
+    offloadLbl: 'Vorwarnung Subagent-Auslagerung (≥70% nutzt invoke_subagent zum Cache-Schutz)',
+    ledgerLbl: 'Post-Komprimierungs-Ledger (stellt geänderte/gelesene Dateiliste wieder her)',
     timingTitle: 'Leerlauf & Abklingzeit',
     idleWaitLbl: 'Leerlauf (Sek.)',
     cooldownLbl: 'Abklingzeit (Sek.)',
@@ -2603,6 +2625,8 @@ function renderAutoCompact(d) {
     document.getElementById('acIdleSec').value = cfg.idleSeconds || 8;
     document.getElementById('acCooldownSec').value = cfg.cooldownSeconds || 120;
     document.getElementById('acLockManual').checked = tMode === 'manual_fixed';
+    document.getElementById('acSubagentOffload').checked = cfg.subagentOffload !== false;
+    document.getElementById('acPostCompactLedger').checked = cfg.postCompactLedger !== false;
     const savedPref = cfg.lang || 'auto';
     document.getElementById('uiLang').value = savedPref;
     syncCustomSelect('uiLang');
@@ -3226,6 +3250,8 @@ async function saveAutoCompactSettings(overrides = {}, silent = false) {
     thresholdMode: overrides.thresholdMode ?? (lockManual ? 'manual_fixed' : curMode),
     thresholdK: Number(document.getElementById('acThresholdK').value) || 180,
     mode: document.getElementById('acMode').value,
+    subagentOffload: document.getElementById('acSubagentOffload').checked,
+    postCompactLedger: document.getElementById('acPostCompactLedger').checked,
     idleSeconds: Number(document.getElementById('acIdleSec').value) || 8,
     cooldownSeconds: Number(document.getElementById('acCooldownSec').value) || 120,
     ...overrides,
@@ -3351,6 +3377,8 @@ document.getElementById('advRecBox').onclick = () => {
 document.getElementById('acLockManual').onchange = (e) => {
   saveAutoCompactSettings({ thresholdMode: e.target.checked ? 'manual_fixed' : 'manual_next' }, true);
 };
+document.getElementById('acSubagentOffload').onchange = () => saveAutoCompactSettings({}, true);
+document.getElementById('acPostCompactLedger').onchange = () => saveAutoCompactSettings({}, true);
 document.getElementById('acMode').onchange = () => {
   document.getElementById('acModeHint').textContent = T().modeHints[document.getElementById('acMode').value] || '';
   saveAutoCompactSettings({}, true);
