@@ -1452,6 +1452,8 @@ const I18N = {
     toastBumped: 'Threshold bumped +20K for this turn',
     toastTested: 'Test triggered',
     toastCopied: 'Copied /compact',
+    chartNoDataDay: (day) => `No requests on ${day} for this filter`,
+    chartJumpLatest: (day) => `Jump to latest active day (${day}) →`,
   },
   zh: {
     langAuto: '🌐 自动 (跟随系统)',
@@ -1637,6 +1639,8 @@ const I18N = {
     toastBumped: '本次阈值已提高 20K',
     toastTested: '已触发测试',
     toastCopied: '已复制 /compact',
+    chartNoDataDay: (day) => `${day} 当天在该筛选条件下暂无请求`,
+    chartJumpLatest: (day) => `点击跳转到最近活跃日 (${day}) →`,
   },
   ja: {
     langAuto: '🌐 自動 (システム言語)',
@@ -1822,6 +1826,8 @@ const I18N = {
     toastBumped: '今回のしきい値を +20K 延長しました',
     toastTested: 'テストを実行しました',
     toastCopied: '/compact をコピーしました',
+    chartNoDataDay: (day) => `${day} はこの条件でのリクエストがありません`,
+    chartJumpLatest: (day) => `直近のアクティブ日 (${day}) へ移動 →`,
   },
   fr: {
     langAuto: '🌐 Auto (Système)',
@@ -2007,6 +2013,8 @@ const I18N = {
     toastBumped: 'Seuil augmenté de +20K',
     toastTested: 'Test déclenché',
     toastCopied: '/compact copié',
+    chartNoDataDay: (day) => `Aucune requête le ${day} pour ce filtre`,
+    chartJumpLatest: (day) => `Aller au dernier jour actif (${day}) →`,
   },
   de: {
     langAuto: '🌐 Auto (System)',
@@ -2192,6 +2200,8 @@ const I18N = {
     toastBumped: 'Schwelle einmalig um +20K erhöht',
     toastTested: 'Test ausgelöst',
     toastCopied: '/compact kopiert',
+    chartNoDataDay: (day) => `Keine Anfragen am ${day} für diesen Filter`,
+    chartJumpLatest: (day) => `Zum letzten aktiven Tag (${day}) springen →`,
   },
 };
 
@@ -2233,6 +2243,7 @@ let state = {
   logPageSize: 10,
   logExpanded: true,
   paused: false,
+  autoJumpDay: false,
   data: null,
 };
 
@@ -2884,7 +2895,36 @@ function renderMainChart(d) {
     const cx = padL + h * slotW + slotW / 2;
     html += `<text x="${cx}" y="${H - 6}" fill="#9ca3af" font-size="10" text-anchor="middle">${String(h).padStart(2, '0')}:00</text>`;
   }
+
+  const totalDayReqs = d.hourly.reduce((s, h) => s + (h.requests || 0), 0);
+  if (totalDayReqs === 0) {
+    const activeDays = Object.keys(d.daily || {}).filter((k) => (d.daily[k]?.requests || 0) > 0).sort();
+    const latestDay = activeDays.length > 0 ? activeDays[activeDays.length - 1] : '';
+    const midX = padL + plotW / 2;
+    const midY = padT + plotH / 2 - (latestDay ? 8 : 0);
+    html += `<text x="${midX}" y="${midY}" fill="#64748b" font-size="12" text-anchor="middle">${escHtml(dict.chartNoDataDay(d.targetDay || state.day))}</text>`;
+    if (latestDay && latestDay !== state.day) {
+      html += `<text id="jumpLatestDayBtn" data-day="${latestDay}" x="${midX}" y="${midY + 22}" fill="#2563eb" font-size="12" font-weight="600" text-anchor="middle" style="cursor:pointer">${escHtml(dict.chartJumpLatest(latestDay))}</text>`;
+    }
+  }
   svg.innerHTML = html;
+
+  const jumpBtn = svg.querySelector('#jumpLatestDayBtn');
+  if (jumpBtn) {
+    jumpBtn.onclick = () => {
+      const target = jumpBtn.dataset.day;
+      if (!target) return;
+      state.day = target;
+      state.hour = null;
+      dayLabel.textContent = target;
+      const parts = target.split('-');
+      if (parts.length === 3) {
+        calViewYear = Number(parts[0]);
+        calViewMonth = Number(parts[1]) - 1;
+      }
+      fetchData();
+    };
+  }
 
   svg.querySelectorAll('.hover-slot').forEach((el) => {
     el.onclick = () => {
@@ -3070,6 +3110,8 @@ function renderRankPanel(d) {
       el.onclick = () => {
         const m = el.dataset.model;
         state.model = state.model === m ? 'all' : m;
+        state.hour = null;
+        state.autoJumpDay = true;
         fetchData();
       };
     });
@@ -3119,6 +3161,8 @@ function renderRankPanel(d) {
       item.onclick = () => {
         const cid = item.dataset.id;
         state.convId = state.convId === cid ? 'all' : cid;
+        state.hour = null;
+        state.autoJumpDay = true;
         fetchData();
       };
     });
@@ -3200,7 +3244,7 @@ function renderTable(d) {
       <td class="num">${fmtNum(e.input)} <span style="color:var(--subtle)">/ ${fmtNum(e.cacheRead)}</span></td>
       <td class="num" style="color:var(--muted)">${fmtNum(e.output)}</td>
       <td class="num" style="font-weight:600;color:${hitColor}">${e.hitRate}%</td>
-      <td class="num" style="font-weight:600">${fmtNum(e.contextTotal)}</td>
+      <td class="num" style="font-weight:600">${e.type === 'CHECKPOINT' && e.liveContextTokens ? `${fmtNum(e.contextTotal)} → <span style="color:var(--green)">${fmtNum(e.liveContextTokens)}</span>` : fmtNum(e.contextTotal)}</td>
     </tr>` + (hasDetail ? `<tr class="detail-row" id="detail-${idx}" style="display:none"><td colspan="8">${escHtml(e.detail)}</td></tr>` : '');
   }).join('');
 
@@ -3219,6 +3263,25 @@ async function fetchData() {
     const res = await fetch(`./api/overview?id=${encodeURIComponent(state.convId)}&day=${encodeURIComponent(state.day)}&model=${encodeURIComponent(state.model)}${hParam}`);
     if (!res.ok) return;
     const d = await res.json();
+    if (state.autoJumpDay) {
+      state.autoJumpDay = false;
+      const hasHourly = (d.hourly || []).some((h) => (h.requests || 0) > 0);
+      if (state.canvasMode === 'hourly' && !hasHourly && d.daily) {
+        const activeDays = Object.keys(d.daily).filter((k) => (d.daily[k]?.requests || 0) > 0).sort();
+        const latestDay = activeDays.length > 0 ? activeDays[activeDays.length - 1] : '';
+        if (latestDay && latestDay !== state.day) {
+          state.day = latestDay;
+          state.hour = null;
+          dayLabel.textContent = latestDay;
+          const parts = latestDay.split('-');
+          if (parts.length === 3) {
+            calViewYear = Number(parts[0]);
+            calViewMonth = Number(parts[1]) - 1;
+          }
+          return fetchData();
+        }
+      }
+    }
     state.data = d;
     const dict = T();
 
