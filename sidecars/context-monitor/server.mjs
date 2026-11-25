@@ -9,7 +9,9 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ROOT = resolve(__dirname, '..', '..');
 const PLUGIN_REPO_URL = 'https://github.com/FableFatale/antigravity-context-monitor';
+const PLUGIN_GIT_URL = `${PLUGIN_REPO_URL}.git`;
 const PLUGIN_RELEASES_URL = `${PLUGIN_REPO_URL}/releases`;
+const PLUGIN_RAW_MANIFEST_URL = 'https://raw.githubusercontent.com/FableFatale/antigravity-context-monitor/main/plugin.json';
 const PLUGIN_TAGS_API = 'https://api.github.com/repos/FableFatale/antigravity-context-monitor/tags?per_page=10';
 const PORT = Number(process.env.ANTIGRAVITY_SIDECAR_WEB_PORT) || 0;
 const APP_DATA = process.env.ANTIGRAVITY_APP_DATA_DIR || join(homedir(), '.gemini', 'antigravity');
@@ -1642,70 +1644,148 @@ function compareSemver(a, b) {
   return 0;
 }
 
+function normalizeSemver(raw) {
+  const parsed = parseSemver(raw);
+  return parsed ? `${parsed[0]}.${parsed[1]}.${parsed[2]}` : '';
+}
+
+function cleanUpdateErr(err, timeoutLabel = 'timed out') {
+  if (err && (err.name === 'TimeoutError' || err.name === 'AbortError')) return timeoutLabel;
+  const raw = String(err?.message || err || 'network error');
+  const line = raw.split(/\r?\n/).map((s) => s.trim()).find(Boolean) || 'network error';
+  return line.slice(0, 120);
+}
+
 let pluginUpdateInFlight = false;
 
 export async function checkPluginUpdate() {
   const info = getPluginInfo();
-  const checkedAt = Date.now();
+  const errors = [];
+  let latestVersion = '';
+  let source = '';
+
+  // Tier 1 (Primary): GitHub Raw CDN — zero API rate limit
   try {
-    const res = await fetch(PLUGIN_TAGS_API, {
+    const res = await fetch(`${PLUGIN_RAW_MANIFEST_URL}?t=${Date.now()}`, {
       method: 'GET',
       headers: {
         'User-Agent': 'antigravity-context-monitor',
-        Accept: 'application/vnd.github+json',
+        Accept: 'application/json',
       },
       signal: AbortSignal.timeout(8000),
     });
-    if (!res.ok) {
-      return {
-        ok: false,
-        currentVersion: info.version,
-        isGitRepo: info.isGitRepo,
-        releasesUrl: info.releasesUrl,
-        checkedAt,
-        message: `GitHub API returned HTTP ${res.status}`,
-      };
+    if (res.ok) {
+      const manifest = await res.json();
+      const ver = normalizeSemver(manifest?.version);
+      if (ver) {
+        latestVersion = ver;
+        source = 'raw-github';
+      } else {
+        errors.push('raw-github: invalid version in plugin.json');
+      }
+    } else {
+      errors.push(`raw-github: HTTP ${res.status}`);
     }
-    const tags = await res.json();
-    let latestVersion = info.version;
-    let foundValidTag = false;
-    if (Array.isArray(tags)) {
-      for (const item of tags) {
-        const parsed = parseSemver(item?.name);
-        if (!parsed) continue;
-        const normalized = `${parsed[0]}.${parsed[1]}.${parsed[2]}`;
-        if (!foundValidTag || compareSemver(normalized, latestVersion) > 0) {
-          latestVersion = normalized;
-          foundValidTag = true;
+  } catch (err) {
+    errors.push(`raw-github: ${cleanUpdateErr(err, 'timed out (8s)')}`);
+  }
+
+  // Tier 2 (Fallback): git ls-remote — zero API rate limit & inherits local git proxy/credentials
+  if (!source) {
+    const gitArgs = info.isGitRepo
+      ? ['-C', PLUGIN_ROOT, 'ls-remote', '--tags', '--refs', 'origin']
+      : ['ls-remote', '--tags', '--refs', PLUGIN_GIT_URL];
+    const gitRes = await execFileAsync('git', gitArgs, { timeout: 10000 });
+    if (gitRes.ok) {
+      let best = '';
+      for (const rawLine of gitRes.stdout.split(/\r?\n/)) {
+        const line = rawLine.trim();
+        if (!line) continue;
+        const m = line.match(/refs\/tags\/([^\s]+)$/);
+        if (!m) continue;
+        const ver = normalizeSemver(m[1]);
+        if (!ver) continue;
+        if (!best || compareSemver(ver, best) > 0) {
+          best = ver;
         }
       }
+      if (best) {
+        latestVersion = best;
+        source = 'git-ls-remote';
+      } else {
+        errors.push('git-ls-remote: no valid semver tags');
+      }
+    } else {
+      const snippet = (gitRes.stderr || gitRes.error || 'failed')
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .find(Boolean) || 'failed';
+      errors.push(`git-ls-remote: ${snippet.slice(0, 120)}`);
     }
-    const hasUpdate = foundValidTag && compareSemver(latestVersion, info.version) > 0;
+  }
+
+  // Tier 3 (Last resort): GitHub Tags API
+  if (!source) {
+    try {
+      const res = await fetch(PLUGIN_TAGS_API, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'antigravity-context-monitor',
+          Accept: 'application/vnd.github+json',
+        },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (res.ok) {
+        const tags = await res.json();
+        let best = '';
+        if (Array.isArray(tags)) {
+          for (const item of tags) {
+            const ver = normalizeSemver(item?.name);
+            if (!ver) continue;
+            if (!best || compareSemver(ver, best) > 0) {
+              best = ver;
+            }
+          }
+        }
+        if (best) {
+          latestVersion = best;
+          source = 'github-api';
+        } else {
+          errors.push('github-api: no valid semver tags');
+        }
+      } else {
+        errors.push(`github-api: HTTP ${res.status}`);
+      }
+    } catch (err) {
+      errors.push(`github-api: ${cleanUpdateErr(err, 'timed out (8s)')}`);
+    }
+  }
+
+  if (source && latestVersion) {
+    const hasUpdate = compareSemver(latestVersion, info.version) > 0;
     return {
       ok: true,
       currentVersion: info.version,
       latestVersion,
       hasUpdate,
+      source,
       isGitRepo: info.isGitRepo,
       releasesUrl: info.releasesUrl,
-      checkedAt,
+      checkedAt: Date.now(),
       message: hasUpdate
         ? `Update available: v${info.version} → v${latestVersion}`
         : `Already up to date (v${info.version})`,
     };
-  } catch (err) {
-    const isTimeout = err && (err.name === 'TimeoutError' || err.name === 'AbortError');
-    return {
-      ok: false,
-      currentVersion: info.version,
-      isGitRepo: info.isGitRepo,
-      releasesUrl: info.releasesUrl,
-      checkedAt,
-      message: isTimeout
-        ? 'GitHub request timed out (8s)'
-        : String(err?.message || err || 'Network error').slice(0, 200),
-    };
   }
+
+  return {
+    ok: false,
+    currentVersion: info.version,
+    isGitRepo: info.isGitRepo,
+    releasesUrl: info.releasesUrl,
+    checkedAt: Date.now(),
+    message: `Update check failed (${errors.join('; ')})`,
+  };
 }
 
 export async function applyPluginUpdate() {
