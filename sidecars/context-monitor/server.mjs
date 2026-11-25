@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { createServer } from 'node:http';
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -469,6 +469,7 @@ function computeThresholdAdvice(events) {
 
 const PLUGIN_DATA_DIR = join(APP_DATA, 'plugin_data', 'context-monitor');
 const AUTO_COMPACT_PATH = join(PLUGIN_DATA_DIR, 'auto-compact.json');
+const AUTO_COMPACT_LOCK_PATH = join(PLUGIN_DATA_DIR, 'auto-compact.lock');
 
 const DEFAULT_AUTO_COMPACT = {
   enabled: true,
@@ -578,14 +579,55 @@ let autoCompactConfig = loadAutoCompactConfig();
 let autoCompactConfigMtime = 0;
 let autoCompactRunning = false;
 
-function syncAutoCompactConfigFromDisk() {
+function syncAutoCompactConfigFromDisk(force = false) {
   try {
     if (!existsSync(AUTO_COMPACT_PATH)) return;
     const st = statSync(AUTO_COMPACT_PATH);
-    if (st.mtimeMs !== autoCompactConfigMtime) {
+    if (force || st.mtimeMs !== autoCompactConfigMtime) {
       autoCompactConfig = loadAutoCompactConfig();
       autoCompactConfigMtime = st.mtimeMs;
     }
+  } catch {}
+}
+
+export function acquireCrossProcessLock(staleMs = 30000) {
+  try {
+    mkdirSync(PLUGIN_DATA_DIR, { recursive: true });
+  } catch {}
+  for (let attempt = 0; attempt < 2; attempt++) {
+    let fd;
+    try {
+      fd = openSync(AUTO_COMPACT_LOCK_PATH, 'wx');
+      try {
+        writeFileSync(fd, JSON.stringify({ pid: process.pid, ts: Date.now() }), 'utf-8');
+      } finally {
+        try { closeSync(fd); } catch {}
+      }
+      return true;
+    } catch (err) {
+      if (err && err.code === 'EEXIST') {
+        if (attempt === 0) {
+          try {
+            const st = statSync(AUTO_COMPACT_LOCK_PATH);
+            if (Date.now() - st.mtimeMs > staleMs) {
+              try { unlinkSync(AUTO_COMPACT_LOCK_PATH); } catch {}
+              continue;
+            }
+          } catch (statErr) {
+            if (statErr && statErr.code === 'ENOENT') continue;
+          }
+        }
+        return false;
+      }
+      return false;
+    }
+  }
+  return false;
+}
+
+export function releaseCrossProcessLock() {
+  try {
+    unlinkSync(AUTO_COMPACT_LOCK_PATH);
   } catch {}
 }
 
@@ -1105,8 +1147,25 @@ async function triggerCompactNow(source = 'manual_toast') {
       beforeMtime = st.mtimeMs;
     } catch {}
   }
+  if (!acquireCrossProcessLock()) {
+    return { skipped: true, reason: 'LOCKED_OTHER_PROCESS', message: '另一个进程正在执行压缩触发，已跳过重复发送' };
+  }
   autoCompactRunning = true;
   try {
+    syncAutoCompactConfigFromDisk(true);
+    const nowLocked = Date.now();
+    const cooldownMs = Math.max(15, Number(autoCompactConfig.cooldownSeconds) || 120) * 1000;
+    if (
+      target &&
+      autoCompactConfig.lastTriggeredConvId === target.convId &&
+      autoCompactConfig.lastTriggeredEventTs &&
+      autoCompactConfig.lastTriggeredEventTs === target.lastEventTs
+    ) {
+      return { skipped: true, reason: 'ALREADY_TRIGGERED_FOR_TURN', message: '当前轮次已完成压缩触发，已跳过重复发送' };
+    }
+    if (nowLocked - (autoCompactConfig.lastTriggeredAt || 0) < cooldownMs) {
+      return { skipped: true, reason: 'COOLDOWN', message: '仍在压缩冷却期内，已跳过重复发送' };
+    }
     const res = await runPowerShellCompact('ui_send', null, { keepClipboard: true });
     let verified = Boolean(res.ok);
     let copiedOnly = false;
@@ -1147,6 +1206,7 @@ async function triggerCompactNow(source = 'manual_toast') {
     return entry;
   } finally {
     autoCompactRunning = false;
+    releaseCrossProcessLock();
   }
 }
 
@@ -1194,8 +1254,32 @@ async function evaluateAutoCompact(forceTest = false) {
     if (now - (autoCompactConfig.lastTriggeredAt || 0) < cooldownMs) return { skipped: true, reason: 'COOLDOWN' };
   }
 
+  let lockAcquired = false;
+  if (!forceTest) {
+    lockAcquired = acquireCrossProcessLock();
+    if (!lockAcquired) return { skipped: true, reason: 'LOCKED_OTHER_PROCESS' };
+  }
+
   autoCompactRunning = true;
   try {
+    if (!forceTest) {
+      syncAutoCompactConfigFromDisk(true);
+      const nowLocked = Date.now();
+      if (
+        target &&
+        autoCompactConfig.lastTriggeredConvId === target.convId &&
+        autoCompactConfig.lastTriggeredEventTs &&
+        autoCompactConfig.lastTriggeredEventTs === target.lastEventTs
+      ) {
+        return { skipped: true, reason: 'ALREADY_TRIGGERED_FOR_TURN' };
+      }
+      if (nowLocked - (autoCompactConfig.lastTriggeredAt || 0) < cooldownMs) {
+        return { skipped: true, reason: 'COOLDOWN' };
+      }
+      if (nowLocked < (autoCompactConfig.snoozedUntil || 0)) {
+        return { skipped: true, reason: 'SNOOZED' };
+      }
+    }
     const tDict = BACKEND_I18N[resolveLang(autoCompactConfig)] || BACKEND_I18N.en;
     const toastMeta = {
       title: tDict.toastTitle,
@@ -1270,6 +1354,7 @@ async function evaluateAutoCompact(forceTest = false) {
     return entry;
   } finally {
     autoCompactRunning = false;
+    if (lockAcquired) releaseCrossProcessLock();
   }
 }
 
@@ -1465,6 +1550,47 @@ function refreshRtkStatsAsync(force = false) {
   );
 }
 
+export async function initRtkAntigravityPlugin(rtkBin = '') {
+  if (existsSync(RTK_PLUGIN_PATH)) {
+    rtkCache.pluginInstalled = true;
+    return {
+      ok: true,
+      alreadyInitialized: true,
+      initialized: true,
+      message: 'Antigravity RTK plugin already configured',
+    };
+  }
+  const bin = String(rtkBin || '').trim() || findKnownRtkBinary() || 'rtk';
+  const res = await execFileAsync(
+    bin,
+    ['init', '-g', '--agent', 'antigravity', '--auto-patch'],
+    { timeout: 20000 }
+  );
+  const initialized = existsSync(RTK_PLUGIN_PATH);
+  rtkCache.pluginInstalled = initialized;
+  if (initialized) {
+    return {
+      ok: true,
+      alreadyInitialized: false,
+      initialized: true,
+      message: 'Initialized Antigravity RTK plugin',
+    };
+  }
+  const errSnippet = (res.stderr || res.stdout || res.error || 'rtk init failed')
+    .trim()
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .slice(-2)
+    .join(' ')
+    .slice(0, 180);
+  return {
+    ok: false,
+    alreadyInitialized: false,
+    initialized: false,
+    message: errSnippet || 'Failed to initialize Antigravity RTK plugin',
+  };
+}
+
 export async function installRtkCli() {
   if (rtkInstallState.running) {
     return { ok: false, running: true, state: { ...rtkInstallState }, message: 'RTK installation is already running' };
@@ -1477,14 +1603,20 @@ export async function installRtkCli() {
         autoCompactConfig.rtkPath = existing;
         saveAutoCompactConfig(autoCompactConfig);
       }
+      const initRes = existsSync(RTK_PLUGIN_PATH)
+        ? { ok: true, alreadyInitialized: true, initialized: true }
+        : await initRtkAntigravityPlugin(existing);
+      const pluginInitialized = Boolean(initRes?.initialized || initRes?.alreadyInitialized);
       rtkCache.checkedAt = 0;
       refreshRtkStatsAsync(true);
       rtkInstallState.status = 'ok';
       rtkInstallState.method = 'detected';
       rtkInstallState.installedPath = existing;
-      rtkInstallState.message = `Detected existing RTK at ${existing}`;
+      rtkInstallState.message = initRes?.initialized && !initRes?.alreadyInitialized
+        ? `Detected existing RTK at ${existing} + initialized Antigravity RTK plugin`
+        : `Detected existing RTK at ${existing}`;
       rtkInstallState.finishedAt = Date.now();
-      return { ok: true, state: { ...rtkInstallState }, message: rtkInstallState.message };
+      return { ok: true, pluginInitialized, state: { ...rtkInstallState }, message: rtkInstallState.message };
     }
   }
 
@@ -1575,17 +1707,24 @@ export async function installRtkCli() {
       saveAutoCompactConfig(autoCompactConfig);
       try { autoCompactConfigMtime = statSync(AUTO_COMPACT_PATH).mtimeMs; } catch {}
     }
+    const initRes = existsSync(RTK_PLUGIN_PATH)
+      ? { ok: true, alreadyInitialized: true, initialized: true }
+      : await initRtkAntigravityPlugin(detected || 'rtk');
+    const pluginInitialized = Boolean(initRes?.initialized || initRes?.alreadyInitialized);
     rtkCache.checkedAt = 0;
     refreshRtkStatsAsync(true);
 
     rtkInstallState.status = 'ok';
     rtkInstallState.method = succeeded;
     rtkInstallState.installedPath = detected || 'rtk';
+    const pluginSuffix = initRes?.initialized && !initRes?.alreadyInitialized
+      ? ' + initialized Antigravity RTK plugin'
+      : '';
     rtkInstallState.message = detected
-      ? `Installed via ${succeeded} (${detected})`
-      : `Installed via ${succeeded}`;
+      ? `Installed via ${succeeded} (${detected})${pluginSuffix}`
+      : `Installed via ${succeeded}${pluginSuffix}`;
     rtkInstallState.finishedAt = Date.now();
-    return { ok: true, state: { ...rtkInstallState }, message: rtkInstallState.message };
+    return { ok: true, pluginInitialized, state: { ...rtkInstallState }, message: rtkInstallState.message };
   } finally {
     rtkInstallState.running = false;
   }
@@ -2066,6 +2205,13 @@ const server = createServer(async (req, res) => {
 
   if (url.pathname === '/api/rtk/install' && req.method === 'POST') {
     const result = await installRtkCli();
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify(result));
+    return;
+  }
+
+  if (url.pathname === '/api/rtk/init' && req.method === 'POST') {
+    const result = await initRtkAntigravityPlugin();
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(result));
     return;

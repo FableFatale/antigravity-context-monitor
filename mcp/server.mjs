@@ -17,6 +17,7 @@ import {
   snoozeAutoCompact,
   evaluateAutoCompact,
   installRtkCli,
+  initRtkAntigravityPlugin,
   checkPluginUpdate,
   applyPluginUpdate,
   openExternalUrl,
@@ -82,7 +83,7 @@ const __App = ${AppId};
 const __applyTheme = ${applyThemeId || '(() => {})'};
 const __applyVars = ${applyVarsId || '(() => {})'};
 
-const app = new __App({ name: 'Context & Cache Monitor', version: '1.8.3' }, {});
+const app = new __App({ name: 'Context & Cache Monitor', version: '1.8.4' }, {});
 
 const applyCtx = (ctx) => {
   if (!ctx) return;
@@ -155,6 +156,9 @@ async function mcpFetch(urlStr, opts) {
   if (url.pathname.endsWith('/api/rtk/install') && method === 'POST') {
     return makeJsonResponse(await callAppTool('install_rtk', {}));
   }
+  if (url.pathname.endsWith('/api/rtk/init') && method === 'POST') {
+    return makeJsonResponse(await callAppTool('init_rtk_plugin', {}));
+  }
   if (url.pathname.endsWith('/api/plugin/check-update') && method === 'POST') {
     return makeJsonResponse(await callAppTool('check_plugin_update', {}));
   }
@@ -181,7 +185,7 @@ ensureConnected()
 }
 
 const server = new Server(
-  { name: 'context-monitor', version: '1.8.3' },
+  { name: 'context-monitor', version: '1.8.4' },
   {
     capabilities: {
       tools: {},
@@ -328,6 +332,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       _meta: { ui: { visibility: ['app'] } },
     },
     {
+      name: 'init_rtk_plugin',
+      title: 'Init RTK Antigravity Plugin',
+      description: 'App-only tool to initialize the Antigravity RTK plugin (never overwrites existing config).',
+      inputSchema: { type: 'object', properties: {} },
+      _meta: { ui: { visibility: ['app'] } },
+    },
+    {
       name: 'check_plugin_update',
       title: 'Check Plugin Update',
       description: 'App-only on-demand tool to check GitHub tags for a newer plugin release.',
@@ -418,6 +429,14 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
 
   if (name === 'install_rtk') {
     const result = await installRtkCli();
+    return {
+      content: [{ type: 'text', text: result.message || 'ok' }],
+      structuredContent: result,
+    };
+  }
+
+  if (name === 'init_rtk_plugin') {
+    const result = await initRtkAntigravityPlugin();
     return {
       content: [{ type: 'text', text: result.message || 'ok' }],
       structuredContent: result,
