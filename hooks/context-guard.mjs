@@ -205,8 +205,10 @@ function fmtK(n) {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n);
 }
 
-function detectRtkInstalled() {
+function detectRtkInstalled(customPath = '') {
   try {
+    const trimmed = String(customPath || '').trim();
+    if (trimmed && existsSync(trimmed)) return true;
     if (existsSync(join(homedir(), '.gemini', 'config', 'plugins', 'rtk', 'plugin.json'))) return true;
     const isWin = process.platform === 'win32';
     const binName = isWin ? 'rtk.exe' : 'rtk';
@@ -384,7 +386,7 @@ function main() {
   const curStr = fmtK(snap.contextTotal);
   const thStr = fmtK(thresholdTokens);
   const hitStr = `${snap.hitRate}%`;
-  const rtkInstalled = detectRtkInstalled();
+  const rtkInstalled = detectRtkInstalled(cfg.rtkPath);
 
   // ============================================================================
   // Architecture 1: Tiered Subagent Offloading at Soft Warning (70% - 99%)

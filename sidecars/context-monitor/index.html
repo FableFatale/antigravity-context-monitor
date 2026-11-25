@@ -825,6 +825,20 @@
     transition: background .12s;
   }
   .status-badge.rtk-pill:hover { background: rgba(5, 150, 105, 0.16); }
+  .status-badge.rtk-pill.muted {
+    background: var(--surface-2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .status-badge.rtk-pill.muted:hover { background: #ebebeb; color: var(--text); }
+  .rtk-path-row { display: flex; gap: 6px; align-items: center; }
+  .rtk-repo-link {
+    font-size: 11px;
+    color: var(--indigo);
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .rtk-repo-link:hover { text-decoration: underline; }
   .rtk-cmd-list { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
   .rtk-cmd-row {
     display: flex;
@@ -880,11 +894,11 @@
       <div class="p-select-wrap" data-select-id="uiLang">
         <input type="hidden" id="uiLang" value="auto" />
         <button type="button" class="p-select-trigger" style="height:32px;border-radius:8px;border:none;box-shadow:var(--shadow-low);padding:0 10px">
-          <span class="p-select-label">🌐 Auto</span>
+          <span class="p-select-label">Auto</span>
           <svg class="p-select-chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
         <div class="p-select-menu">
-          <div class="p-select-opt active" data-val="auto"><span data-i18n="langAuto">🌐 Auto</span><span class="opt-check">✓</span></div>
+          <div class="p-select-opt active" data-val="auto"><span data-i18n="langAuto">Auto</span><span class="opt-check">✓</span></div>
           <div class="p-select-opt" data-val="en"><span>English</span><span class="opt-check">✓</span></div>
           <div class="p-select-opt" data-val="zh"><span>简体中文</span><span class="opt-check">✓</span></div>
           <div class="p-select-opt" data-val="ja"><span>日本語</span><span class="opt-check">✓</span></div>
@@ -1302,7 +1316,7 @@ function resolveUiLang(pref) {
 
 const I18N = {
   en: {
-    langAuto: '🌐 Auto (System)',
+    langAuto: 'Auto (System)',
     loading: 'Loading…',
     pickDateTitle: 'Select date',
     today: 'Today',
@@ -1487,7 +1501,8 @@ const I18N = {
     toastCopied: 'Copied /compact',
     chartNoDataDay: (day) => `No requests on ${day} for this filter`,
     chartJumpLatest: (day) => `Jump to latest active day (${day}) →`,
-    rtkTopPill: (saved, pct) => `⚡ RTK -${saved} (${pct}%)`,
+    rtkTopPill: (saved, pct) => `RTK -${saved} (${pct}%)`,
+    rtkTopNotInstalled: 'RTK Not Installed',
     rtkSecTitle: 'RTK Output Condenser',
     rtkLinked: 'Linked',
     rtkFallbackBadge: 'Pure-Node Fallback',
@@ -1497,12 +1512,17 @@ const I18N = {
     rtkDaySummary: (day, cmds, saved, pct) => `${day}: ${cmds} cmds · Saved ${saved} (${pct}%)`,
     rtkDayNone: (day) => `${day}: no condensed shell commands yet`,
     rtkLinkedHint: 'PreInvocation hook auto-cooperates with RTK at ≥70% context and avoids unnecessary rtk bypass.',
-    rtkFallbackDesc: 'RTK CLI not detected — built-in pure-Node output-budget rules are active at ≥70% context. Install optional RTK to condense shell output by 20%–60% at the source:',
+    rtkFallbackDesc: 'RTK CLI not detected — built-in pure-Node output-budget rules are active at ≥70% context. Provide a local rtk path below or install optional RTK:',
+    rtkPathLabel: 'Custom RTK executable path (optional)',
+    rtkPathPlaceholder: 'e.g. C:\\path\\to\\rtk.exe or /usr/local/bin/rtk',
+    rtkPathApply: 'Apply',
+    rtkPathSaved: 'RTK path saved, re-checking…',
+    rtkRepoLink: 'RTK GitHub (rtk-ai/rtk) ↗',
     rtkCopyBtn: 'Copy',
     rtkCopied: (cmd) => `Copied: ${cmd}`,
   },
   zh: {
-    langAuto: '🌐 自动 (跟随系统)',
+    langAuto: '自动 (跟随系统)',
     loading: '加载中…',
     pickDateTitle: '选择分时图日期',
     today: '今天',
@@ -1687,7 +1707,8 @@ const I18N = {
     toastCopied: '已复制 /compact',
     chartNoDataDay: (day) => `${day} 当天在该筛选条件下暂无请求`,
     chartJumpLatest: (day) => `点击跳转到最近活跃日 (${day}) →`,
-    rtkTopPill: (saved, pct) => `⚡ RTK 省 ${saved} (${pct}%)`,
+    rtkTopPill: (saved, pct) => `RTK 省 ${saved} (${pct}%)`,
+    rtkTopNotInstalled: 'RTK 未安装',
     rtkSecTitle: 'RTK 命令输出压缩',
     rtkLinked: '已联动',
     rtkFallbackBadge: '纯 Node 兜底中',
@@ -1697,12 +1718,17 @@ const I18N = {
     rtkDaySummary: (day, cmds, saved, pct) => `${day} 当日：${cmds} 次命令 · 节省 ${saved} (${pct}%)`,
     rtkDayNone: (day) => `${day} 当日暂无 RTK 压缩命令记录`,
     rtkLinkedHint: '已自动联动：上下文 ≥70% 时 PreInvocation 钩子会协同 RTK，提醒 Agent 避免不必要的 rtk bypass。',
-    rtkFallbackDesc: '未检测到 RTK CLI —— 已自动启用内置纯 Node 命令输出控量规则（≥70% 生效）。可选安装 RTK，从源头再省 20%–60% 终端输出 Token：',
+    rtkFallbackDesc: '未检测到 RTK CLI —— 已自动启用内置纯 Node 命令输出控量规则（≥70% 生效）。可在下方指定本地 rtk 路径或按需安装：',
+    rtkPathLabel: '指定本地 RTK 可执行文件路径（可选）',
+    rtkPathPlaceholder: '例如 C:\\path\\to\\rtk.exe 或 /usr/local/bin/rtk',
+    rtkPathApply: '应用',
+    rtkPathSaved: '已保存 RTK 路径，正在重新检测…',
+    rtkRepoLink: 'RTK 官方仓库 (rtk-ai/rtk) ↗',
     rtkCopyBtn: '复制',
     rtkCopied: (cmd) => `已复制：${cmd}`,
   },
   ja: {
-    langAuto: '🌐 自動 (システム言語)',
+    langAuto: '自動 (システム言語)',
     loading: '読み込み中…',
     pickDateTitle: '日付を選択',
     today: '今日',
@@ -1887,7 +1913,8 @@ const I18N = {
     toastCopied: '/compact をコピーしました',
     chartNoDataDay: (day) => `${day} はこの条件でのリクエストがありません`,
     chartJumpLatest: (day) => `直近のアクティブ日 (${day}) へ移動 →`,
-    rtkTopPill: (saved, pct) => `⚡ RTK -${saved} (${pct}%)`,
+    rtkTopPill: (saved, pct) => `RTK -${saved} (${pct}%)`,
+    rtkTopNotInstalled: 'RTK 未インストール',
     rtkSecTitle: 'RTK コマンド出力圧縮',
     rtkLinked: '連携済み',
     rtkFallbackBadge: 'Node フォールバック中',
@@ -1897,12 +1924,17 @@ const I18N = {
     rtkDaySummary: (day, cmds, saved, pct) => `${day}：${cmds} 回 · ${saved} 削減 (${pct}%)`,
     rtkDayNone: (day) => `${day} は圧縮コマンド記録なし`,
     rtkLinkedHint: '自動連携中：コンテキスト ≥70% で PreInvocation Hook が不要な rtk bypass を抑制します。',
-    rtkFallbackDesc: 'RTK CLI 未検出 — ≥70% で内蔵 Node 出力予算ルールが自動動作します。任意で RTK を導入するとシェル出力を 20%–60% 削減できます：',
+    rtkFallbackDesc: 'RTK CLI 未検出 — ≥70% で内蔵 Node 出力予算ルールが自動動作します。ローカルの rtk パスを指定するか、任意で導入できます：',
+    rtkPathLabel: 'ローカル RTK 実行ファイルパス（任意）',
+    rtkPathPlaceholder: '例: C:\\path\\to\\rtk.exe または /usr/local/bin/rtk',
+    rtkPathApply: '適用',
+    rtkPathSaved: 'RTK パスを保存しました。再検出中…',
+    rtkRepoLink: 'RTK 公式リポジトリ (rtk-ai/rtk) ↗',
     rtkCopyBtn: 'コピー',
     rtkCopied: (cmd) => `コピーしました: ${cmd}`,
   },
   fr: {
-    langAuto: '🌐 Auto (Système)',
+    langAuto: 'Auto (Système)',
     loading: 'Chargement…',
     pickDateTitle: 'Choisir une date',
     today: "Aujourd'hui",
@@ -2087,7 +2119,8 @@ const I18N = {
     toastCopied: '/compact copié',
     chartNoDataDay: (day) => `Aucune requête le ${day} pour ce filtre`,
     chartJumpLatest: (day) => `Aller au dernier jour actif (${day}) →`,
-    rtkTopPill: (saved, pct) => `⚡ RTK -${saved} (${pct}%)`,
+    rtkTopPill: (saved, pct) => `RTK -${saved} (${pct}%)`,
+    rtkTopNotInstalled: 'RTK non installé',
     rtkSecTitle: 'Compresseur de sortie RTK',
     rtkLinked: 'Connecté',
     rtkFallbackBadge: 'Repli Node actif',
@@ -2097,12 +2130,17 @@ const I18N = {
     rtkDaySummary: (day, cmds, saved, pct) => `${day} : ${cmds} cmd · -${saved} (${pct}%)`,
     rtkDayNone: (day) => `${day} : aucune commande compressée`,
     rtkLinkedHint: 'Coopération active : à ≥70% de contexte, le hook PreInvocation évite les rtk bypass inutiles.',
-    rtkFallbackDesc: 'RTK CLI non détecté — les règles intégrées de budget de sortie Node sont actives dès 70%. Installez RTK en option pour réduire les sorties shell de 20% à 60% :',
+    rtkFallbackDesc: 'RTK CLI non détecté — les règles intégrées de budget de sortie Node sont actives dès 70%. Indiquez un chemin local vers rtk ou installez-le :',
+    rtkPathLabel: 'Chemin exécutable RTK local (optionnel)',
+    rtkPathPlaceholder: 'ex. C:\\path\\to\\rtk.exe ou /usr/local/bin/rtk',
+    rtkPathApply: 'Appliquer',
+    rtkPathSaved: 'Chemin RTK enregistré, vérification…',
+    rtkRepoLink: 'Dépôt RTK (rtk-ai/rtk) ↗',
     rtkCopyBtn: 'Copier',
     rtkCopied: (cmd) => `Copié : ${cmd}`,
   },
   de: {
-    langAuto: '🌐 Auto (System)',
+    langAuto: 'Auto (System)',
     loading: 'Laden…',
     pickDateTitle: 'Datum wählen',
     today: 'Heute',
@@ -2287,7 +2325,8 @@ const I18N = {
     toastCopied: '/compact kopiert',
     chartNoDataDay: (day) => `Keine Anfragen am ${day} für diesen Filter`,
     chartJumpLatest: (day) => `Zum letzten aktiven Tag (${day}) springen →`,
-    rtkTopPill: (saved, pct) => `⚡ RTK -${saved} (${pct}%)`,
+    rtkTopPill: (saved, pct) => `RTK -${saved} (${pct}%)`,
+    rtkTopNotInstalled: 'RTK nicht installiert',
     rtkSecTitle: 'RTK-Ausgabekomprimierung',
     rtkLinked: 'Verbunden',
     rtkFallbackBadge: 'Node-Fallback aktiv',
@@ -2297,7 +2336,12 @@ const I18N = {
     rtkDaySummary: (day, cmds, saved, pct) => `${day}: ${cmds} Bef. · -${saved} (${pct}%)`,
     rtkDayNone: (day) => `${day}: keine komprimierten Befehle`,
     rtkLinkedHint: 'Aktiv gekoppelt: Ab ≥70% Kontext vermeidet der PreInvocation-Hook unnötiges rtk bypass.',
-    rtkFallbackDesc: 'RTK CLI nicht gefunden — integrierte Node-Ausgaberegeln greifen ab ≥70% Kontext. Optionales RTK spart 20%–60% Shell-Ausgabe direkt an der Quelle:',
+    rtkFallbackDesc: 'RTK CLI nicht gefunden — integrierte Node-Ausgaberegeln greifen ab ≥70% Kontext. Geben Sie unten einen lokalen rtk-Pfad an oder installieren Sie RTK:',
+    rtkPathLabel: 'Lokaler RTK-Programmpfad (optional)',
+    rtkPathPlaceholder: 'z. B. C:\\path\\to\\rtk.exe oder /usr/local/bin/rtk',
+    rtkPathApply: 'Anwenden',
+    rtkPathSaved: 'RTK-Pfad gespeichert, prüfe neu…',
+    rtkRepoLink: 'RTK GitHub (rtk-ai/rtk) ↗',
     rtkCopyBtn: 'Kopieren',
     rtkCopied: (cmd) => `Kopiert: ${cmd}`,
   },
@@ -2433,6 +2477,8 @@ document.getElementById('rtkTopBadge').onclick = () => {
   openDrawer();
   requestAnimationFrame(() => {
     document.getElementById('rtkDrawerSection')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const pathEl = document.getElementById('rtkPathInput');
+    if (pathEl) pathEl.focus();
   });
 };
 document.getElementById('closeDrawerBtn').onclick = closeDrawer;
@@ -2917,6 +2963,7 @@ function renderRtkSection(d) {
     const s = rtk.summary;
     if (topPill) {
       topPill.textContent = dict.rtkTopPill(fmtNum(s.totalSaved), s.avgSavingsPct);
+      topPill.className = 'status-badge rtk-pill';
       topPill.style.display = 'inline-flex';
     }
     const dayStr = d.targetDay || state.day;
@@ -2947,14 +2994,28 @@ function renderRtkSection(d) {
       <div style="font-size:11px;color:var(--subtle);line-height:1.45">${escHtml(dict.rtkLinkedHint)}</div>
     `;
   } else {
-    if (topPill) topPill.style.display = 'none';
-    const cmds = ['brew install rtk', 'cargo install rtk'];
+    if (topPill) {
+      topPill.textContent = dict.rtkTopNotInstalled;
+      topPill.className = 'status-badge rtk-pill muted';
+      topPill.style.display = 'inline-flex';
+    }
+    // Preserve focus while user is typing a custom RTK executable path
+    if (document.activeElement && document.activeElement.id === 'rtkPathInput') return;
+    const savedPath = rtk.customPath || '';
+    const cmds = ['winget install rtk', 'brew install rtk', 'cargo install rtk'];
     box.innerHTML = `
       <div class="drawer-sec-head">
         <span>${escHtml(dict.rtkSecTitle)}</span>
         <span class="status-badge">${escHtml(dict.rtkFallbackBadge)}</span>
       </div>
       <div style="font-size:11px;color:var(--muted);line-height:1.5">${escHtml(dict.rtkFallbackDesc)}</div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span style="font-size:11px;color:var(--muted)">${escHtml(dict.rtkPathLabel)}</span>
+        <div class="rtk-path-row">
+          <input type="text" id="rtkPathInput" class="p-input" style="flex:1;min-width:0" value="${escHtml(savedPath)}" placeholder="${escHtml(dict.rtkPathPlaceholder)}" />
+          <button type="button" id="rtkPathApplyBtn" class="btn btn-primary btn-xs">${escHtml(dict.rtkPathApply)}</button>
+        </div>
+      </div>
       <div class="rtk-cmd-list">
         ${cmds.map((c) => `
           <div class="rtk-cmd-row">
@@ -2963,7 +3024,26 @@ function renderRtkSection(d) {
           </div>
         `).join('')}
       </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:2px">
+        <a class="rtk-repo-link" href="https://github.com/rtk-ai/rtk" target="_blank" rel="noopener noreferrer">${escHtml(dict.rtkRepoLink)}</a>
+      </div>
     `;
+    const applyPath = async () => {
+      const val = (document.getElementById('rtkPathInput')?.value || '').trim();
+      await fetch('./api/auto-compact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rtkPath: val }),
+      });
+      showUiToast(dict.rtkPathSaved);
+      setTimeout(() => fetchData(), 900);
+    };
+    const applyBtn = document.getElementById('rtkPathApplyBtn');
+    const pathInput = document.getElementById('rtkPathInput');
+    if (applyBtn) applyBtn.onclick = applyPath;
+    if (pathInput) {
+      pathInput.onkeydown = (e) => { if (e.key === 'Enter') applyPath(); };
+    }
     box.querySelectorAll('.rtk-copy-cmd').forEach((btn) => {
       btn.onclick = async () => {
         const cmd = btn.dataset.cmd || '';

@@ -444,6 +444,7 @@ const DEFAULT_AUTO_COMPACT = {
   mode: 'ui_send', // 'ui_send' | 'toast_confirm' | 'hook_guard' | 'hook_block' | 'notify'
   subagentOffload: true,
   postCompactLedger: true,
+  rtkPath: '',
   snoozedUntil: 0,
   lastTriggeredAt: 0,
   lastTriggeredConvId: '',
@@ -1207,14 +1208,16 @@ const rtkCache = {
   lastUpdatedAt: 0,
 };
 
-function refreshRtkStatsAsync() {
+function refreshRtkStatsAsync(force = false) {
   const now = Date.now();
   const ttl = rtkCache.installed ? RTK_CACHE_TTL_MS : RTK_MISS_TTL_MS;
-  if (rtkCache.inFlight || (rtkCache.checkedAt > 0 && now - rtkCache.checkedAt < ttl)) return;
+  if (rtkCache.inFlight || (!force && rtkCache.checkedAt > 0 && now - rtkCache.checkedAt < ttl)) return;
   rtkCache.inFlight = true;
   rtkCache.pluginInstalled = existsSync(RTK_PLUGIN_PATH);
+  const customBin = String(autoCompactConfig.rtkPath || '').trim();
+  const rtkBin = customBin || 'rtk';
   execFile(
-    'rtk',
+    rtkBin,
     ['gain', '--daily', '--format', 'json'],
     { timeout: 2500, encoding: 'utf8', windowsHide: true },
     (err, stdout) => {
@@ -1276,6 +1279,7 @@ function getRtkStatsSnapshot(targetDay = '') {
     installed: rtkCache.installed,
     pluginInstalled: rtkCache.pluginInstalled,
     checked: rtkCache.checkedAt > 0,
+    customPath: String(autoCompactConfig.rtkPath || '').trim(),
     summary: rtkCache.summary,
     day: dayEntry,
     recentDays,
@@ -1316,6 +1320,14 @@ export function updateAutoCompactConfig(body = {}) {
   if (VALID_MODES.has(body.mode)) autoCompactConfig.mode = body.mode;
   if (typeof body.subagentOffload === 'boolean') autoCompactConfig.subagentOffload = body.subagentOffload;
   if (typeof body.postCompactLedger === 'boolean') autoCompactConfig.postCompactLedger = body.postCompactLedger;
+  if (typeof body.rtkPath === 'string') {
+    const nextPath = body.rtkPath.trim().replace(/^["']|["']$/g, '').slice(0, 260);
+    if (nextPath !== autoCompactConfig.rtkPath) {
+      autoCompactConfig.rtkPath = nextPath;
+      rtkCache.checkedAt = 0;
+      refreshRtkStatsAsync(true);
+    }
+  }
   autoCompactConfig.snoozedUntil = 0;
   saveAutoCompactConfig(autoCompactConfig);
   try { autoCompactConfigMtime = statSync(AUTO_COMPACT_PATH).mtimeMs; } catch {}
