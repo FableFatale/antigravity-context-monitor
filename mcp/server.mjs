@@ -19,6 +19,7 @@ import {
   installRtkCli,
   checkPluginUpdate,
   applyPluginUpdate,
+  openExternalUrl,
   getIndexHtml,
 } from '../sidecars/context-monitor/server.mjs';
 
@@ -81,7 +82,7 @@ const __App = ${AppId};
 const __applyTheme = ${applyThemeId || '(() => {})'};
 const __applyVars = ${applyVarsId || '(() => {})'};
 
-const app = new __App({ name: 'Context & Cache Monitor', version: '1.8.1' }, {});
+const app = new __App({ name: 'Context & Cache Monitor', version: '1.8.2' }, {});
 
 const applyCtx = (ctx) => {
   if (!ctx) return;
@@ -160,6 +161,9 @@ async function mcpFetch(urlStr, opts) {
   if (url.pathname.endsWith('/api/plugin/apply-update') && method === 'POST') {
     return makeJsonResponse(await callAppTool('apply_plugin_update', {}));
   }
+  if (url.pathname.endsWith('/api/open-url') && method === 'POST') {
+    return makeJsonResponse(await callAppTool('open_external_url', body));
+  }
   return { ok: false, status: 404, async json() { return {}; }, async text() { return 'Not found'; } };
 }
 
@@ -177,7 +181,7 @@ ensureConnected()
 }
 
 const server = new Server(
-  { name: 'context-monitor', version: '1.8.1' },
+  { name: 'context-monitor', version: '1.8.2' },
   {
     capabilities: {
       tools: {},
@@ -337,6 +341,19 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       inputSchema: { type: 'object', properties: {} },
       _meta: { ui: { visibility: ['app'] } },
     },
+    {
+      name: 'open_external_url',
+      title: 'Open External URL',
+      description: 'App-only tool to open allowlisted GitHub repository or release URLs in the OS default browser.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          url: { type: 'string' },
+        },
+        required: ['url'],
+      },
+      _meta: { ui: { visibility: ['app'] } },
+    },
   ],
 }));
 
@@ -417,6 +434,14 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
 
   if (name === 'apply_plugin_update') {
     const result = await applyPluginUpdate();
+    return {
+      content: [{ type: 'text', text: result.message || 'ok' }],
+      structuredContent: result,
+    };
+  }
+
+  if (name === 'open_external_url') {
+    const result = await openExternalUrl(args.url);
     return {
       content: [{ type: 'text', text: result.message || 'ok' }],
       structuredContent: result,

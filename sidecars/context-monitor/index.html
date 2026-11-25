@@ -783,6 +783,11 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    min-width: 0;
+  }
+  #acHistoryBox {
+    overflow: hidden;
+    min-width: 0;
   }
   .drawer-sec-head {
     display: flex;
@@ -816,6 +821,32 @@
   .ref-box.rec:hover { background: rgba(37, 99, 235, 0.1); }
   .ref-lbl { font-size: 11px; color: var(--muted); }
   .ref-val { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  .status-badge.ver-pill {
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-family: inherit;
+    font-variant-numeric: tabular-nums;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .status-badge.ver-pill:hover {
+    background: #ebebeb;
+    color: var(--text);
+    border-color: var(--border-strong);
+  }
+  .status-badge.ver-pill.indigo {
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--indigo);
+    border-color: rgba(37, 99, 235, 0.28);
+    font-weight: 600;
+  }
+  .status-badge.ver-pill.indigo:hover { background: rgba(37, 99, 235, 0.16); }
+  .status-badge.ver-pill.active {
+    background: rgba(22, 163, 74, 0.1);
+    color: var(--green);
+    border-color: rgba(22, 163, 74, 0.25);
+  }
+  .status-badge.ver-pill:disabled { opacity: 0.65; cursor: wait; }
 
   .status-badge.rtk-pill {
     background: rgba(5, 150, 105, 0.1);
@@ -867,7 +898,8 @@
     position: absolute;
     top: calc(100% + 6px);
     right: 0;
-    width: 232px;
+    width: 288px;
+    max-width: calc(100vw - 44px);
     background: var(--card);
     border: 1px solid var(--border-strong);
     border-radius: 10px;
@@ -876,8 +908,37 @@
     z-index: 90;
     display: none;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
     font-weight: 400;
+  }
+  .rtk-link-card {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 7px 8px;
+    border-radius: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+  }
+  .rtk-link-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .rtk-link-url {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10.5px;
+    line-height: 1.35;
+    color: var(--muted);
+    word-break: break-all;
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: text;
+  }
+  .rtk-link-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
   .rtk-info-wrap:hover .rtk-info-pop,
   .rtk-info-wrap.open .rtk-info-pop { display: flex; }
@@ -935,6 +996,7 @@
     <div class="topbar-left">
       <span class="live-dot" id="liveDot"></span>
       <span class="brand-title">Context &amp; Cache</span>
+      <button type="button" class="status-badge ver-pill" id="pluginVerTopBtn" data-i18n-title="pluginVerTopTip" title="Click to check for updates (zero background requests)">v1.8.2</button>
       <span class="status-badge" id="lastActiveBadge" data-i18n="loading">加载中…</span>
       <button type="button" class="status-badge rtk-pill" id="rtkTopBadge" style="display:none" title="RTK Output Condenser"></button>
       <button type="button" class="btn btn-primary btn-xs" id="rtkTopInstallBtn" style="display:none;height:22px;padding:0 9px;border-radius:999px;font-size:11px" data-i18n="rtkInstallBtn">安装 RTK</button>
@@ -1292,22 +1354,6 @@
       </div>
     </div>
 
-    <!-- Timing -->
-    <div class="drawer-section">
-      <div class="drawer-sec-head"><span data-i18n="timingTitle">空闲等待与冷却时间</span></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted)">
-          <span data-i18n="idleWaitLbl">空闲等待 (秒)</span>
-          <input type="number" id="acIdleSec" class="p-input" min="2" max="120" value="8" style="text-align:center" />
-        </label>
-        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted)">
-          <span data-i18n="cooldownLbl">最小冷却 (秒)</span>
-          <input type="number" id="acCooldownSec" class="p-input" min="15" max="3600" value="120" style="text-align:center" />
-        </label>
-      </div>
-      <div id="acLastResult" style="font-size:11px;color:var(--subtle)"></div>
-    </div>
-
     <!-- Dynamic Idle TTL Guard (Context Length + Reset Time + Hourly Limit) -->
     <div class="drawer-section">
       <div class="drawer-sec-head">
@@ -1342,20 +1388,24 @@
     <!-- RTK Output Condenser Companion (Auto-Linked or Pure-Node Fallback) -->
     <div class="drawer-section" id="rtkDrawerSection"></div>
 
+    <!-- Timing -->
+    <div class="drawer-section">
+      <div class="drawer-sec-head"><span data-i18n="timingTitle">空闲等待与冷却时间</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted)">
+          <span data-i18n="idleWaitLbl">空闲等待 (秒)</span>
+          <input type="number" id="acIdleSec" class="p-input" min="2" max="120" value="8" style="text-align:center" />
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted)">
+          <span data-i18n="cooldownLbl">最小冷却 (秒)</span>
+          <input type="number" id="acCooldownSec" class="p-input" min="15" max="3600" value="120" style="text-align:center" />
+        </label>
+      </div>
+      <div id="acLastResult" style="font-size:11px;color:var(--subtle)"></div>
+    </div>
+
     <!-- Recent Trigger History -->
     <div class="drawer-section" id="acHistoryBox" style="display:none"></div>
-
-    <!-- Plugin Version & On-Demand Updates -->
-    <div class="drawer-section" id="pluginUpdateSection">
-      <div class="drawer-sec-head">
-        <span data-i18n="pluginVerTitle">插件版本与更新</span>
-        <div style="display:flex;align-items:center;gap:6px">
-          <span class="status-badge" id="pluginVerPill">v-</span>
-          <button type="button" id="pluginCheckUpdateBtn" class="btn btn-xs" data-i18n="pluginCheckBtn">检查更新</button>
-        </div>
-      </div>
-      <div id="pluginUpdateStatus" style="font-size:11px;color:var(--subtle);line-height:1.5"></div>
-    </div>
   </div>
 
   <div class="drawer-foot">
@@ -1646,6 +1696,15 @@ const I18N = {
     pluginReleasesLink: 'Open Releases ↗',
     pluginCheckFail: (msg) => `Update check failed: ${msg}`,
     pluginUpdateFail: (msg) => `Update failed: ${msg}`,
+    pluginVerTopTip: 'Click to check for updates (zero background requests)',
+    pluginTopUpdatePill: (v) => `Update v${v}`,
+    pluginVerUpdateTip: (v, git) => git ? `Click to update to v${v} (git pull --ff-only)` : `Click to open GitHub Releases (v${v})`,
+    histOk: 'OK',
+    histSkip: 'Skip',
+    openExtBtn: 'Open ↗',
+    openedExternal: 'Opened in default browser',
+    rtkRepoLabel: 'RTK Repository',
+    rtkReleasesLabel: 'Pre-built Releases',
   },
   zh: {
     langAuto: '自动 (跟随系统)',
@@ -1884,6 +1943,15 @@ const I18N = {
     pluginReleasesLink: '前往 Releases ↗',
     pluginCheckFail: (msg) => `检查更新失败：${msg}`,
     pluginUpdateFail: (msg) => `更新失败：${msg}`,
+    pluginVerTopTip: '点击检查更新（零后台请求）',
+    pluginTopUpdatePill: (v) => `更新 v${v}`,
+    pluginVerUpdateTip: (v, git) => git ? `点击一键更新至 v${v} (git pull --ff-only)` : `点击打开 GitHub Releases (v${v})`,
+    histOk: '已执行',
+    histSkip: '未触发',
+    openExtBtn: '打开 ↗',
+    openedExternal: '已在系统默认浏览器打开',
+    rtkRepoLabel: 'RTK 官方仓库',
+    rtkReleasesLabel: '预编译安装包 (Releases)',
   },
   ja: {
     langAuto: '自動 (システム言語)',
@@ -2122,6 +2190,15 @@ const I18N = {
     pluginReleasesLink: 'Releases を開く ↗',
     pluginCheckFail: (msg) => `更新確認に失敗しました：${msg}`,
     pluginUpdateFail: (msg) => `更新に失敗しました：${msg}`,
+    pluginVerTopTip: 'クリックして更新を確認（バックグラウンド通信ゼロ）',
+    pluginTopUpdatePill: (v) => `更新 v${v}`,
+    pluginVerUpdateTip: (v, git) => git ? `クリックして v${v} へ更新 (git pull --ff-only)` : `クリックして GitHub Releases (v${v}) を開く`,
+    histOk: '完了',
+    histSkip: 'スキップ',
+    openExtBtn: '開く ↗',
+    openedExternal: '既定のブラウザで開きました',
+    rtkRepoLabel: 'RTK リポジトリ',
+    rtkReleasesLabel: 'ビルド済み Releases',
   },
   fr: {
     langAuto: 'Auto (Système)',
@@ -2360,6 +2437,15 @@ const I18N = {
     pluginReleasesLink: 'Voir Releases ↗',
     pluginCheckFail: (msg) => `Échec de la vérification : ${msg}`,
     pluginUpdateFail: (msg) => `Échec de la mise à jour : ${msg}`,
+    pluginVerTopTip: 'Cliquer pour vérifier les mises à jour (zéro requête en arrière-plan)',
+    pluginTopUpdatePill: (v) => `MàJ v${v}`,
+    pluginVerUpdateTip: (v, git) => git ? `Cliquer pour mettre à jour vers v${v} (git pull --ff-only)` : `Cliquer pour ouvrir GitHub Releases (v${v})`,
+    histOk: 'OK',
+    histSkip: 'Ignoré',
+    openExtBtn: 'Ouvrir ↗',
+    openedExternal: 'Ouvert dans le navigateur par défaut',
+    rtkRepoLabel: 'Dépôt RTK',
+    rtkReleasesLabel: 'Binaires Releases',
   },
   de: {
     langAuto: 'Auto (System)',
@@ -2598,6 +2684,15 @@ const I18N = {
     pluginReleasesLink: 'Zu Releases ↗',
     pluginCheckFail: (msg) => `Update-Prüfung fehlgeschlagen: ${msg}`,
     pluginUpdateFail: (msg) => `Update fehlgeschlagen: ${msg}`,
+    pluginVerTopTip: 'Klicken, um nach Updates zu suchen (keine Hintergrundanfragen)',
+    pluginTopUpdatePill: (v) => `Update v${v}`,
+    pluginVerUpdateTip: (v, git) => git ? `Klicken für Update auf v${v} (git pull --ff-only)` : `Klicken für GitHub Releases (v${v})`,
+    histOk: 'OK',
+    histSkip: 'Überspr.',
+    openExtBtn: 'Öffnen ↗',
+    openedExternal: 'Im Standardbrowser geöffnet',
+    rtkRepoLabel: 'RTK-Repository',
+    rtkReleasesLabel: 'Vorkompilierte Releases',
   },
 };
 
@@ -2681,12 +2776,66 @@ function applyI18n() {
   }
 }
 
-function showUiToast(msg) {
+function showUiToast(msg, durationMs = 2400) {
   const el = document.getElementById('uiToast');
   el.textContent = msg;
   el.style.display = 'block';
   clearTimeout(el._timer);
-  el._timer = setTimeout(() => { el.style.display = 'none'; }, 2200);
+  el._timer = setTimeout(() => { el.style.display = 'none'; }, durationMs);
+}
+
+async function copyTextSafe(text) {
+  const str = String(text ?? '');
+  if (!str) return false;
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+    try {
+      await navigator.clipboard.writeText(str);
+      return true;
+    } catch {}
+  }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = str;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '-9999px';
+    ta.style.left = '-9999px';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, str.length);
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return Boolean(ok);
+  } catch {
+    return false;
+  }
+}
+
+async function openExternalSafe(url) {
+  const target = String(url || '').trim();
+  if (!target) return false;
+  try {
+    const res = await fetch('./api/open-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: target }),
+    });
+    let data = {};
+    try { data = await res.json(); } catch {}
+    if (res.ok && data && data.ok) {
+      showUiToast(T().openedExternal);
+      return true;
+    }
+  } catch {}
+  try {
+    const win = window.open(target, '_blank', 'noopener,noreferrer');
+    if (win) return true;
+  } catch {}
+  const copied = await copyTextSafe(target);
+  if (copied) showUiToast(T().rtkCopied(target));
+  return false;
 }
 
 function fmtNum(n) {
@@ -3224,9 +3373,13 @@ function renderAutoCompact(d) {
     histBox.innerHTML = `<div class="drawer-sec-head"><span>${escHtml(dict.histTitle)}</span></div>` + hist.map((h) => {
       const dt = new Date(h.ts).toLocaleTimeString([], { hour12: false });
       const tag = h.isTest ? dict.tagTest : (h.triggerReason === 'idle_ttl' ? dict.tagIdle : (h.mode === 'web_toast_confirm' ? dict.tagConfirm : dict.tagAuto));
-      return `<div style="display:flex;justify-content:space-between;gap:8px;font-size:11px;line-height:1.4">
-        <span style="color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(h.convTitle)}">${dt} ${tag} ${escHtml(h.convTitle)}</span>
-        <span style="flex-shrink:0;color:${h.ok ? '#16a34a' : '#d97706'}">${escHtml(h.message)}</span>
+      const statusTxt = h.ok ? dict.histOk : dict.histSkip;
+      return `<div style="display:flex;flex-direction:column;gap:3px;min-width:0;max-width:100%;padding:7px 9px;border-radius:8px;background:var(--card);border:1px solid var(--border);overflow:hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;min-width:0">
+          <span style="min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--muted)" title="${escHtml(h.convTitle)}">${dt} ${tag} ${escHtml(h.convTitle)}</span>
+          <span style="flex-shrink:0;font-size:10.5px;font-weight:600;color:${h.ok ? '#16a34a' : '#d97706'}">${escHtml(statusTxt)}</span>
+        </div>
+        <div style="font-size:11px;line-height:1.45;color:${h.ok ? '#15803d' : '#b45309'};white-space:normal;word-break:break-word;overflow-wrap:anywhere">${escHtml(h.message)}</div>
       </div>`;
     }).join('');
   } else {
@@ -3277,14 +3430,38 @@ function renderRtkSection(d) {
   if (!box) return;
 
   const isInstalling = Boolean(rtkInstallInFlight || rtk.installState?.running);
+  const existingInfoWrap = document.getElementById('rtkInfoWrap');
+  const wasInfoOpen = Boolean(existingInfoWrap && existingInfoWrap.classList.contains('open'));
+  const keepPopoverDom = Boolean(
+    wasInfoOpen &&
+    box.dataset.lang === state.lang &&
+    box.dataset.installed === String(Boolean(rtk.installed && rtk.summary)) &&
+    box.dataset.installing === String(isInstalling)
+  );
+  const rtkRepoUrl = 'https://github.com/rtk-ai/rtk';
+  const rtkReleasesUrl = 'https://github.com/rtk-ai/rtk/releases';
   const repoInfoHtml = `
     <span class="rtk-info-wrap" id="rtkInfoWrap">
       <button type="button" class="rtk-info-btn" id="rtkInfoBtn" aria-label="${escHtml(dict.rtkInfoTitle)}" title="${escHtml(dict.rtkInfoTitle)}">i</button>
-      <div class="rtk-info-pop">
+      <div class="rtk-info-pop" id="rtkInfoPop">
         <div style="font-size:11.5px;font-weight:700;color:var(--text)">${escHtml(dict.rtkInfoTitle)}</div>
         <div style="font-size:11px;color:var(--muted);line-height:1.45">${escHtml(dict.rtkInfoDesc)}</div>
-        <a class="rtk-repo-link" href="https://github.com/rtk-ai/rtk" target="_blank" rel="noopener noreferrer">github.com/rtk-ai/rtk ↗</a>
-        <a class="rtk-repo-link" href="https://github.com/rtk-ai/rtk/releases" target="_blank" rel="noopener noreferrer">${escHtml(dict.rtkReleasesLink)}</a>
+        <div class="rtk-link-card">
+          <span class="rtk-link-label">${escHtml(dict.rtkRepoLabel)}</span>
+          <span class="rtk-link-url">${escHtml(rtkRepoUrl)}</span>
+          <div class="rtk-link-actions">
+            <button type="button" class="btn btn-primary btn-xs" data-open-url="${escHtml(rtkRepoUrl)}">${escHtml(dict.openExtBtn)}</button>
+            <button type="button" class="btn btn-xs" data-copy-url="${escHtml(rtkRepoUrl)}">${escHtml(dict.rtkCopyBtn)}</button>
+          </div>
+        </div>
+        <div class="rtk-link-card">
+          <span class="rtk-link-label">${escHtml(dict.rtkReleasesLabel)}</span>
+          <span class="rtk-link-url">${escHtml(rtkReleasesUrl)}</span>
+          <div class="rtk-link-actions">
+            <button type="button" class="btn btn-primary btn-xs" data-open-url="${escHtml(rtkReleasesUrl)}">${escHtml(dict.openExtBtn)}</button>
+            <button type="button" class="btn btn-xs" data-copy-url="${escHtml(rtkReleasesUrl)}">${escHtml(dict.rtkCopyBtn)}</button>
+          </div>
+        </div>
       </div>
     </span>
   `;
@@ -3297,6 +3474,7 @@ function renderRtkSection(d) {
       topPill.style.display = 'inline-flex';
     }
     if (topInstallBtn) topInstallBtn.style.display = 'none';
+    if (keepPopoverDom) return;
     const dayStr = d.targetDay || state.day;
     const dayLine = rtk.day && rtk.day.commands > 0
       ? dict.rtkDaySummary(dayStr, rtk.day.commands.toLocaleString(), fmtNum(rtk.day.savedTokens), rtk.day.savingsPct)
@@ -3338,8 +3516,8 @@ function renderRtkSection(d) {
       topInstallBtn.disabled = isInstalling;
       topInstallBtn.style.display = 'inline-flex';
     }
-    // Preserve focus while user is typing a custom RTK executable path
-    if (document.activeElement && document.activeElement.id === 'rtkPathInput') return;
+    // Preserve focus while user is typing a custom RTK executable path or using the repo popover
+    if (keepPopoverDom || (document.activeElement && document.activeElement.id === 'rtkPathInput')) return;
     const savedPath = rtk.customPath || '';
     const st = rtk.installState || {};
     const statusLine = isInstalling
@@ -3386,17 +3564,39 @@ function renderRtkSection(d) {
       pathInput.onkeydown = (e) => { if (e.key === 'Enter') applyPath(); };
     }
   }
+  box.dataset.lang = state.lang;
+  box.dataset.installed = String(Boolean(rtk.installed && rtk.summary));
+  box.dataset.installing = String(isInstalling);
   const infoBtn = document.getElementById('rtkInfoBtn');
   const infoWrap = document.getElementById('rtkInfoWrap');
+  const infoPop = document.getElementById('rtkInfoPop');
+  if (wasInfoOpen && infoWrap) infoWrap.classList.add('open');
   if (infoBtn && infoWrap) {
     infoBtn.onclick = (e) => {
       e.stopPropagation();
       infoWrap.classList.toggle('open');
     };
   }
+  if (infoPop) {
+    infoPop.onclick = (e) => e.stopPropagation();
+    infoPop.querySelectorAll('[data-open-url]').forEach((btn) => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        openExternalSafe(btn.dataset.openUrl);
+      };
+    });
+    infoPop.querySelectorAll('[data-copy-url]').forEach((btn) => {
+      btn.onclick = async (e) => {
+        e.stopPropagation();
+        const u = btn.dataset.copyUrl;
+        const ok = await copyTextSafe(u);
+        if (ok) showUiToast(T().rtkCopied(u));
+      };
+    });
+  }
 }
 
-/* On-Demand Plugin Version & Updater (Zero Background Network Calls) */
+/* On-Demand Plugin Version & Updater (Topbar Pill, Zero Background Network Calls) */
 const pluginUpdateState = {
   phase: 'idle', // 'idle' | 'checking' | 'uptodate' | 'available' | 'updating' | 'updated' | 'error'
   result: null,
@@ -3415,14 +3615,21 @@ async function triggerPluginCheckUpdate() {
     if (data && data.ok) {
       pluginUpdateState.result = data;
       pluginUpdateState.phase = data.hasUpdate ? 'available' : 'uptodate';
+      if (data.hasUpdate) {
+        showUiToast(T().pluginUpdateAvail(data.currentVersion || '-', data.latestVersion || '-'), 3600);
+      } else {
+        showUiToast(T().pluginUpToDate(data.currentVersion || state.data?.pluginInfo?.version || '-'));
+      }
     } else {
       pluginUpdateState.result = data || null;
       pluginUpdateState.phase = 'error';
       pluginUpdateState.errorMsg = T().pluginCheckFail(data?.message || `HTTP ${res.status}`);
+      showUiToast(pluginUpdateState.errorMsg, 3600);
     }
   } catch (err) {
     pluginUpdateState.phase = 'error';
     pluginUpdateState.errorMsg = T().pluginCheckFail(String(err?.message || err || 'Network error'));
+    showUiToast(pluginUpdateState.errorMsg, 3600);
   }
   renderPluginUpdateSection(state.data);
 }
@@ -3432,6 +3639,7 @@ async function triggerPluginApplyUpdate() {
   pluginUpdateState.phase = 'updating';
   pluginUpdateState.errorMsg = '';
   renderPluginUpdateSection(state.data);
+  showUiToast(T().pluginUpdatingHint, 3200);
   try {
     const res = await fetch('./api/plugin/apply-update', { method: 'POST' });
     let data = {};
@@ -3439,88 +3647,80 @@ async function triggerPluginApplyUpdate() {
     if (data && data.ok) {
       pluginUpdateState.result = data;
       pluginUpdateState.phase = 'updated';
-      showUiToast(T().pluginUpdatedReload(data.previousVersion || '-', data.newVersion || '-'));
+      showUiToast(T().pluginUpdatedReload(data.previousVersion || '-', data.newVersion || '-'), 4800);
       setTimeout(() => fetchData(), 400);
     } else {
       pluginUpdateState.result = data || pluginUpdateState.result;
       pluginUpdateState.phase = 'error';
       pluginUpdateState.errorMsg = T().pluginUpdateFail(data?.message || `HTTP ${res.status}`);
+      showUiToast(pluginUpdateState.errorMsg, 3600);
     }
   } catch (err) {
     pluginUpdateState.phase = 'error';
     pluginUpdateState.errorMsg = T().pluginUpdateFail(String(err?.message || err || 'Network error'));
+    showUiToast(pluginUpdateState.errorMsg, 3600);
   }
   renderPluginUpdateSection(state.data);
 }
 
+function handlePluginVerTopClick() {
+  if (pluginUpdateState.phase === 'checking' || pluginUpdateState.phase === 'updating') return;
+  if (pluginUpdateState.phase === 'available') {
+    const info = state.data?.pluginInfo || {};
+    const isGitRepo = info.isGitRepo !== undefined
+      ? Boolean(info.isGitRepo)
+      : Boolean(pluginUpdateState.result?.isGitRepo);
+    const releasesUrl = info.releasesUrl || pluginUpdateState.result?.releasesUrl || 'https://github.com/FableFatale/antigravity-context-monitor/releases';
+    if (isGitRepo) {
+      triggerPluginApplyUpdate();
+    } else {
+      openExternalSafe(releasesUrl);
+    }
+    return;
+  }
+  triggerPluginCheckUpdate();
+}
+
 function renderPluginUpdateSection(d) {
   const dict = T();
+  const btn = document.getElementById('pluginVerTopBtn');
+  if (!btn) return;
   const info = d?.pluginInfo || {};
-  const verPill = document.getElementById('pluginVerPill');
-  const checkBtn = document.getElementById('pluginCheckUpdateBtn');
-  const statusEl = document.getElementById('pluginUpdateStatus');
-  if (!verPill || !checkBtn || !statusEl) return;
-
-  const curVer = info.version || pluginUpdateState.result?.currentVersion || '-';
+  const curVer = info.version || pluginUpdateState.result?.currentVersion || '1.8.2';
   const isGitRepo = info.isGitRepo !== undefined ? Boolean(info.isGitRepo) : Boolean(pluginUpdateState.result?.isGitRepo);
-  const releasesUrl = info.releasesUrl || pluginUpdateState.result?.releasesUrl || 'https://github.com/FableFatale/antigravity-context-monitor/releases';
-
-  verPill.textContent = curVer === '-' ? 'v-' : `v${curVer}`;
-  if (pluginUpdateState.phase === 'available') {
-    verPill.className = 'status-badge warn';
-  } else if (pluginUpdateState.phase === 'uptodate' || pluginUpdateState.phase === 'updated') {
-    verPill.className = 'status-badge active';
-  } else {
-    verPill.className = 'status-badge';
-  }
-
   const busy = pluginUpdateState.phase === 'checking' || pluginUpdateState.phase === 'updating';
-  checkBtn.disabled = busy;
-  checkBtn.textContent = pluginUpdateState.phase === 'checking' ? dict.pluginCheckingBtn : dict.pluginCheckBtn;
 
-  if (pluginUpdateState.phase === 'idle') {
-    statusEl.innerHTML = `<span>${escHtml(dict.pluginPrivacyHint)}</span>`;
-  } else if (pluginUpdateState.phase === 'checking') {
-    statusEl.innerHTML = `<span style="color:var(--indigo);font-weight:500">${escHtml(dict.pluginCheckingHint)}</span>`;
-  } else if (pluginUpdateState.phase === 'uptodate') {
-    const v = pluginUpdateState.result?.currentVersion || curVer;
-    statusEl.innerHTML = `<span style="color:var(--emerald);font-weight:500">${escHtml(dict.pluginUpToDate(v))}</span>`;
-  } else if (pluginUpdateState.phase === 'available') {
-    const prev = pluginUpdateState.result?.currentVersion || curVer;
-    const latest = pluginUpdateState.result?.latestVersion || '';
-    const actionHtml = isGitRepo
-      ? `<button type="button" id="pluginApplyUpdateBtn" class="btn btn-primary btn-xs">${escHtml(dict.pluginUpdateNowBtn)}</button>`
-      : `<a class="rtk-repo-link" href="${escHtml(releasesUrl)}" target="_blank" rel="noopener noreferrer">${escHtml(dict.pluginReleasesLink)}</a>`;
-    statusEl.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-        <span style="color:var(--amber);font-weight:600">${escHtml(dict.pluginUpdateAvail(prev, latest))}</span>
-        ${actionHtml}
-      </div>
-    `;
-    const applyBtn = statusEl.querySelector('#pluginApplyUpdateBtn');
-    if (applyBtn) applyBtn.onclick = triggerPluginApplyUpdate;
+  btn.disabled = busy;
+  if (pluginUpdateState.phase === 'checking') {
+    btn.textContent = dict.pluginCheckingBtn;
+    btn.className = 'status-badge ver-pill';
+    btn.title = dict.pluginCheckingHint;
   } else if (pluginUpdateState.phase === 'updating') {
-    statusEl.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-        <span style="color:var(--indigo);font-weight:500">${escHtml(dict.pluginUpdatingHint)}</span>
-        <button type="button" class="btn btn-primary btn-xs" disabled>${escHtml(dict.pluginUpdatingBtn)}</button>
-      </div>
-    `;
+    btn.textContent = dict.pluginUpdatingBtn;
+    btn.className = 'status-badge ver-pill indigo';
+    btn.title = dict.pluginUpdatingHint;
+  } else if (pluginUpdateState.phase === 'available') {
+    const latest = pluginUpdateState.result?.latestVersion || '';
+    btn.textContent = dict.pluginTopUpdatePill(latest);
+    btn.className = 'status-badge ver-pill indigo';
+    btn.title = dict.pluginVerUpdateTip(latest, isGitRepo);
   } else if (pluginUpdateState.phase === 'updated') {
-    const prev = pluginUpdateState.result?.previousVersion || curVer;
     const next = pluginUpdateState.result?.newVersion || curVer;
-    statusEl.innerHTML = `<span style="color:var(--emerald);font-weight:600">${escHtml(dict.pluginUpdatedReload(prev, next))}</span>`;
-  } else if (pluginUpdateState.phase === 'error') {
-    statusEl.innerHTML = `
-      <div style="display:flex;flex-direction:column;gap:4px">
-        <span style="color:var(--red)">${escHtml(pluginUpdateState.errorMsg)}</span>
-        <a class="rtk-repo-link" href="${escHtml(releasesUrl)}" target="_blank" rel="noopener noreferrer">${escHtml(dict.pluginReleasesLink)}</a>
-      </div>
-    `;
+    btn.textContent = `v${next}`;
+    btn.className = 'status-badge ver-pill active';
+    btn.title = dict.pluginUpdatedReload(pluginUpdateState.result?.previousVersion || curVer, next);
+  } else if (pluginUpdateState.phase === 'uptodate') {
+    btn.textContent = `v${curVer}`;
+    btn.className = 'status-badge ver-pill active';
+    btn.title = dict.pluginVerTopTip;
+  } else {
+    btn.textContent = `v${curVer}`;
+    btn.className = 'status-badge ver-pill';
+    btn.title = dict.pluginVerTopTip;
   }
 }
 
-document.getElementById('pluginCheckUpdateBtn').onclick = triggerPluginCheckUpdate;
+document.getElementById('pluginVerTopBtn').onclick = handlePluginVerTopClick;
 
 /* Unified Usage Analytics */
 function renderMainChart(d) {
@@ -4243,10 +4443,8 @@ document.getElementById('acTestBtn').onclick = async () => {
   }
 };
 document.getElementById('acCopyCmdBtn').onclick = async () => {
-  try {
-    await navigator.clipboard.writeText('/compact');
-    showUiToast(T().toastCopied);
-  } catch {}
+  const ok = await copyTextSafe('/compact');
+  if (ok) showUiToast(T().toastCopied);
 };
 
 fetchData();

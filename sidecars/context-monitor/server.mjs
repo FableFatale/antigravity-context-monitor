@@ -1883,6 +1883,55 @@ export async function applyPluginUpdate() {
   }
 }
 
+const ALLOWED_EXTERNAL_URL_RE = /^https:\/\/github\.com\/(?:rtk-ai\/rtk|FableFatale\/antigravity-context-monitor)(?:\/[A-Za-z0-9._~/-]*)?$/;
+
+export function validateAllowedExternalUrl(rawUrl) {
+  const raw = String(rawUrl || '').trim();
+  if (!raw) return '';
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return '';
+  }
+  if (parsed.protocol !== 'https:' || parsed.hostname.toLowerCase() !== 'github.com') return '';
+  if (parsed.username || parsed.password || parsed.port || parsed.search || parsed.hash) return '';
+  const normalized = `https://github.com${parsed.pathname.replace(/\/+$/, '')}`;
+  if (!ALLOWED_EXTERNAL_URL_RE.test(normalized)) return '';
+  return normalized;
+}
+
+export async function openExternalUrl(rawUrl) {
+  const safeUrl = validateAllowedExternalUrl(rawUrl);
+  if (!safeUrl) {
+    return {
+      ok: false,
+      url: String(rawUrl || ''),
+      reason: 'URL_NOT_ALLOWED',
+      message: 'Blocked: URL is not in the allowed repository allowlist.',
+    };
+  }
+  let res;
+  if (process.platform === 'win32') {
+    res = await execFileAsync(
+      'powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-Command', 'Start-Process', safeUrl],
+      { timeout: 8000 }
+    );
+  } else if (process.platform === 'darwin') {
+    res = await execFileAsync('open', [safeUrl], { timeout: 8000 });
+  } else {
+    res = await execFileAsync('xdg-open', [safeUrl], { timeout: 8000 });
+  }
+  return {
+    ok: res.ok,
+    url: safeUrl,
+    message: res.ok
+      ? `Opened ${safeUrl}`
+      : (res.stderr || res.error || 'Failed to launch default browser').trim().slice(0, 160),
+  };
+}
+
 export function getFullOverview({ id = 'all', day = '', model = 'all', hour = '' } = {}) {
   const data = buildOverview(id, day, model, hour);
   const acStatus = getAutoCompactStatus();
@@ -2032,6 +2081,14 @@ const server = createServer(async (req, res) => {
   if (url.pathname === '/api/plugin/apply-update' && req.method === 'POST') {
     const result = await applyPluginUpdate();
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify(result));
+    return;
+  }
+
+  if (url.pathname === '/api/open-url' && req.method === 'POST') {
+    const body = await readJsonBody(req);
+    const result = await openExternalUrl(body.url);
+    res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(result));
     return;
   }
