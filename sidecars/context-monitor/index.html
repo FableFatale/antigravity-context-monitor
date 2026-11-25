@@ -867,21 +867,6 @@
   }
   .status-badge.rtk-pill.muted:hover { background: #ebebeb; color: var(--text); }
   .rtk-path-row { display: flex; gap: 6px; align-items: center; }
-  .rtk-init-strip {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 7px 9px;
-    border-radius: 8px;
-    background: rgba(245, 158, 11, 0.1);
-    border: 1px solid rgba(245, 158, 11, 0.28);
-    font-size: 11px;
-    line-height: 1.4;
-    color: #92400e;
-  }
-  .rtk-init-strip > span { min-width: 0; flex: 1; }
-  .rtk-init-strip > button { flex-shrink: 0; }
   .rtk-repo-link {
     font-size: 11px;
     color: var(--indigo);
@@ -1014,7 +999,7 @@
     <div class="topbar-left">
       <span class="live-dot" id="liveDot"></span>
       <span class="brand-title">Context &amp; Cache</span>
-      <button type="button" class="status-badge ver-pill" id="pluginVerTopBtn" data-i18n-title="pluginVerTopTip" title="Click to check for updates (zero background requests)">v1.8.4</button>
+      <button type="button" class="status-badge ver-pill" id="pluginVerTopBtn" data-i18n-title="pluginVerTopTip" title="Click to check for updates (zero background requests)">v1.8.5</button>
       <span class="status-badge" id="lastActiveBadge" data-i18n="loading">加载中…</span>
       <button type="button" class="status-badge rtk-pill" id="rtkTopBadge" style="display:none" title="RTK Output Condenser"></button>
       <button type="button" class="btn btn-primary btn-xs" id="rtkTopInstallBtn" style="display:none;height:22px;padding:0 9px;border-radius:999px;font-size:11px" data-i18n="rtkInstallBtn">安装 RTK</button>
@@ -1723,11 +1708,6 @@ const I18N = {
     openedExternal: 'Opened in default browser',
     rtkRepoLabel: 'RTK Repository',
     rtkReleasesLabel: 'Pre-built Releases',
-    rtkInitBtn: 'Init Antigravity Plugin',
-    rtkInitingBtn: 'Initializing…',
-    rtkInitHint: 'RTK CLI is installed, but the Antigravity RTK plugin is not initialized yet.',
-    rtkInitOk: (msg) => `Antigravity RTK plugin initialized: ${msg}`,
-    rtkInitFail: (msg) => `RTK plugin init failed: ${msg}`,
   },
   zh: {
     langAuto: '自动 (跟随系统)',
@@ -1975,11 +1955,6 @@ const I18N = {
     openedExternal: '已在系统默认浏览器打开',
     rtkRepoLabel: 'RTK 官方仓库',
     rtkReleasesLabel: '预编译安装包 (Releases)',
-    rtkInitBtn: '初始化 Antigravity 插件',
-    rtkInitingBtn: '初始化中…',
-    rtkInitHint: '已检测到 RTK CLI，但尚未初始化 Antigravity RTK 插件（rtk init）。',
-    rtkInitOk: (msg) => `Antigravity RTK 插件已初始化：${msg}`,
-    rtkInitFail: (msg) => `RTK 插件初始化失败：${msg}`,
   },
   ja: {
     langAuto: '自動 (システム言語)',
@@ -2227,11 +2202,6 @@ const I18N = {
     openedExternal: '既定のブラウザで開きました',
     rtkRepoLabel: 'RTK リポジトリ',
     rtkReleasesLabel: 'ビルド済み Releases',
-    rtkInitBtn: 'Antigravity プラグイン初期化',
-    rtkInitingBtn: '初期化中…',
-    rtkInitHint: 'RTK CLI は導入済みですが、Antigravity RTK プラグインが未初期化です。',
-    rtkInitOk: (msg) => `Antigravity RTK プラグインを初期化しました: ${msg}`,
-    rtkInitFail: (msg) => `RTK プラグイン初期化に失敗しました: ${msg}`,
   },
   fr: {
     langAuto: 'Auto (Système)',
@@ -2479,11 +2449,6 @@ const I18N = {
     openedExternal: 'Ouvert dans le navigateur par défaut',
     rtkRepoLabel: 'Dépôt RTK',
     rtkReleasesLabel: 'Binaires Releases',
-    rtkInitBtn: 'Initialiser le plugin Antigravity',
-    rtkInitingBtn: 'Initialisation…',
-    rtkInitHint: 'RTK CLI est installé, mais le plugin Antigravity RTK n’est pas encore initialisé.',
-    rtkInitOk: (msg) => `Plugin Antigravity RTK initialisé : ${msg}`,
-    rtkInitFail: (msg) => `Échec de l’initialisation RTK : ${msg}`,
   },
   de: {
     langAuto: 'Auto (System)',
@@ -2731,11 +2696,6 @@ const I18N = {
     openedExternal: 'Im Standardbrowser geöffnet',
     rtkRepoLabel: 'RTK-Repository',
     rtkReleasesLabel: 'Vorkompilierte Releases',
-    rtkInitBtn: 'Antigravity-Plugin initialisieren',
-    rtkInitingBtn: 'Initialisiere…',
-    rtkInitHint: 'RTK CLI ist installiert, aber das Antigravity-RTK-Plugin ist noch nicht initialisiert.',
-    rtkInitOk: (msg) => `Antigravity-RTK-Plugin initialisiert: ${msg}`,
-    rtkInitFail: (msg) => `RTK-Plugin-Initialisierung fehlgeschlagen: ${msg}`,
   },
 };
 
@@ -3432,29 +3392,6 @@ function renderAutoCompact(d) {
 
 /* RTK Output Condenser Telemetry & Optional Auto-Install Companion */
 let rtkInstallInFlight = false;
-let rtkInitInFlight = false;
-
-async function triggerRtkInitPlugin() {
-  const dict = T();
-  if (rtkInitInFlight) return;
-  rtkInitInFlight = true;
-  if (state.data) renderRtkSection(state.data);
-  try {
-    const res = await fetch('./api/rtk/init', { method: 'POST' });
-    let data = {};
-    try { data = await res.json(); } catch {}
-    if (data && data.ok) {
-      showUiToast(dict.rtkInitOk(data.message || 'ok'));
-    } else {
-      showUiToast(dict.rtkInitFail(data?.message || `HTTP ${res.status}`));
-    }
-  } catch (err) {
-    showUiToast(dict.rtkInitFail(String(err?.message || err || 'Network error')));
-  } finally {
-    rtkInitInFlight = false;
-    setTimeout(() => fetchData(), 400);
-  }
-}
 
 async function triggerRtkAutoInstall() {
   const dict = T();
@@ -3502,9 +3439,7 @@ function renderRtkSection(d) {
     wasInfoOpen &&
     box.dataset.lang === state.lang &&
     box.dataset.installed === String(Boolean(rtk.installed && rtk.summary)) &&
-    box.dataset.installing === String(isInstalling) &&
-    box.dataset.pluginInstalled === String(Boolean(rtk.pluginInstalled)) &&
-    box.dataset.initing === String(Boolean(rtkInitInFlight))
+    box.dataset.installing === String(isInstalling)
   );
   const rtkRepoUrl = 'https://github.com/rtk-ai/rtk';
   const rtkReleasesUrl = 'https://github.com/rtk-ai/rtk/releases';
@@ -3548,13 +3483,6 @@ function renderRtkSection(d) {
       ? dict.rtkDaySummary(dayStr, rtk.day.commands.toLocaleString(), fmtNum(rtk.day.savedTokens), rtk.day.savingsPct)
       : dict.rtkDayNone(dayStr);
 
-    const initStripHtml = !rtk.pluginInstalled
-      ? `<div class="rtk-init-strip">
-          <span>${escHtml(dict.rtkInitHint)}</span>
-          <button type="button" id="rtkInitPluginBtn" class="btn btn-primary btn-xs" ${rtkInitInFlight ? 'disabled' : ''}>${escHtml(rtkInitInFlight ? dict.rtkInitingBtn : dict.rtkInitBtn)}</button>
-        </div>`
-      : '';
-
     box.innerHTML = `
       <div class="drawer-sec-head">
         <span>${escHtml(dict.rtkSecTitle)}</span>
@@ -3563,7 +3491,6 @@ function renderRtkSection(d) {
           ${repoInfoHtml}
         </div>
       </div>
-      ${initStripHtml}
       <div class="ref-grid">
         <div class="ref-box">
           <span class="ref-lbl">${escHtml(dict.rtkTotalSaved)}</span>
@@ -3581,8 +3508,6 @@ function renderRtkSection(d) {
       <div style="font-size:11px;color:var(--text);font-variant-numeric:tabular-nums">${escHtml(dayLine)}</div>
       <div style="font-size:11px;color:var(--subtle);line-height:1.45">${escHtml(dict.rtkLinkedHint)}</div>
     `;
-    const initBtn = document.getElementById('rtkInitPluginBtn');
-    if (initBtn) initBtn.onclick = triggerRtkInitPlugin;
   } else {
     if (topPill) {
       topPill.textContent = dict.rtkTopNotInstalled;
@@ -3645,8 +3570,6 @@ function renderRtkSection(d) {
   box.dataset.lang = state.lang;
   box.dataset.installed = String(Boolean(rtk.installed && rtk.summary));
   box.dataset.installing = String(isInstalling);
-  box.dataset.pluginInstalled = String(Boolean(rtk.pluginInstalled));
-  box.dataset.initing = String(Boolean(rtkInitInFlight));
   const infoBtn = document.getElementById('rtkInfoBtn');
   const infoWrap = document.getElementById('rtkInfoWrap');
   const infoPop = document.getElementById('rtkInfoPop');
@@ -3766,7 +3689,7 @@ function renderPluginUpdateSection(d) {
   const btn = document.getElementById('pluginVerTopBtn');
   if (!btn) return;
   const info = d?.pluginInfo || {};
-  const curVer = info.version || pluginUpdateState.result?.currentVersion || '1.8.4';
+  const curVer = info.version || pluginUpdateState.result?.currentVersion || '1.8.5';
   const isGitRepo = info.isGitRepo !== undefined ? Boolean(info.isGitRepo) : Boolean(pluginUpdateState.result?.isGitRepo);
   const busy = pluginUpdateState.phase === 'checking' || pluginUpdateState.phase === 'updating';
 

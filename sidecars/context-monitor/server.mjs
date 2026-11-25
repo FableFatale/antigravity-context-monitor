@@ -1434,6 +1434,7 @@ const rtkCache = {
   daily: {},
   lastUpdatedAt: 0,
 };
+let rtkAutoInitAttempted = false;
 
 const rtkInstallState = {
   running: false,
@@ -1545,6 +1546,10 @@ function refreshRtkStatsAsync(force = false) {
       } finally {
         rtkCache.inFlight = false;
         rtkCache.checkedAt = Date.now();
+        if (rtkCache.installed && !rtkCache.pluginInstalled && !rtkAutoInitAttempted) {
+          rtkAutoInitAttempted = true;
+          initRtkAntigravityPlugin(rtkBin).catch(() => {});
+        }
       }
     }
   );
@@ -2119,6 +2124,7 @@ export function updateAutoCompactConfig(body = {}) {
     const nextPath = body.rtkPath.trim().replace(/^["']|["']$/g, '').slice(0, 260);
     if (nextPath !== autoCompactConfig.rtkPath) {
       autoCompactConfig.rtkPath = nextPath;
+      if (nextPath) rtkAutoInitAttempted = false;
       rtkCache.checkedAt = 0;
       refreshRtkStatsAsync(true);
     }
