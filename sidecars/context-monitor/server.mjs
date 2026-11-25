@@ -17,6 +17,32 @@ const MODEL_RE = /\b((?:gemini-(?:\d|pro|flash|ultra|exp)|claude-|gpt-|o[134]-)[
 
 const parseCache = new Map();
 
+function normalizeModelName(raw) {
+  const s = String(raw || '').trim();
+  if (!s || s === 'unknown') return s;
+  // Already human-readable display name (contains space or parentheses)
+  if (/[\s()]/.test(s)) return s;
+  // Normalize raw DB/API model IDs like gemini-4-hydrogen-tiered-high, gemini-4-neon-medium, claude-sonnet-4-6
+  const low = s.toLowerCase();
+  const gemMatch = low.match(/^gemini-(\d+(?:\.\d+)?)-([a-z0-9]+)(?:-tiered)?(?:-(xhigh|high|medium|low|thinking|preview))?$/);
+  if (gemMatch) {
+    const ver = gemMatch[1];
+    const fam = gemMatch[2].charAt(0).toUpperCase() + gemMatch[2].slice(1);
+    const tierMap = { xhigh: 'XHigh', high: 'High', medium: 'Medium', low: 'Low', thinking: 'Thinking', preview: 'Preview' };
+    const tier = gemMatch[3] ? ` (${tierMap[gemMatch[3]] || gemMatch[3]})` : '';
+    return `Gemini ${ver} ${fam}${tier}`;
+  }
+  const claudeMatch = low.match(/^claude-([a-z]+)-(\d+)(?:-(\d+))?(?:-(thinking|xhigh|high|medium|low))?$/);
+  if (claudeMatch) {
+    const fam = claudeMatch[1].charAt(0).toUpperCase() + claudeMatch[1].slice(1);
+    const ver = claudeMatch[3] ? `${claudeMatch[2]}.${claudeMatch[3]}` : claudeMatch[2];
+    const tierMap = { thinking: 'Thinking', xhigh: 'XHigh', high: 'High', medium: 'Medium', low: 'Low' };
+    const tier = claudeMatch[4] ? ` (${tierMap[claudeMatch[4]] || claudeMatch[4]})` : '';
+    return `Claude ${fam} ${ver}${tier}`;
+  }
+  return s;
+}
+
 function detectModelFromDb(id) {
   const dbPath = join(CONV_DB_DIR, `${id}.db`);
   if (!existsSync(dbPath)) return '';
@@ -28,7 +54,7 @@ function detectModelFromDb(id) {
     const txt = Buffer.from(row.data).toString('utf8').replace(/[^\x20-\x7e]/g, ' ');
     const matches = txt.match(MODEL_RE) || [];
     const filtered = matches.filter((m) => !/^gemini-api$/i.test(m));
-    return filtered.length > 0 ? filtered[filtered.length - 1] : '';
+    return filtered.length > 0 ? normalizeModelName(filtered[filtered.length - 1]) : '';
   } catch {
     return '';
   } finally {
@@ -60,6 +86,8 @@ function parseConversation(id) {
   let lastRawType = '';
   let lastRawStatus = 'DONE';
   let lastRawToolCalls = 0;
+  let sawCheckpointSinceLastToken = false;
+  let lastTokenEvent = null;
   const runningTaskIds = new Set();
 
   for (const line of lines) {
@@ -88,7 +116,7 @@ function parseConversation(id) {
     if (typeof obj.content === 'string') {
       const mMatch = obj.content.match(/Model Selection.*?to\s+([^\n<]+?)(?:\.\s+(?:No need|If reporting)|\.?\s*(?:\n|<|$))/i);
       if (mMatch && mMatch[1]) {
-        const cleaned = mMatch[1].replace(/\.+$/, '').trim();
+        const cleaned = normalizeModelName(mMatch[1].replace(/\.+$/, '').trim());
         if (cleaned) currentModel = cleaned;
       }
     }
@@ -101,8 +129,13 @@ function parseConversation(id) {
       errorCount++;
     }
 
+    const isCheckpoint = obj.type === 'CHECKPOINT';
+    if (isCheckpoint) {
+      sawCheckpointSinceLastToken = true;
+    }
+
     const hasTokens = typeof obj.input_tokens === 'number' || typeof obj.cache_read_tokens === 'number';
-    if (!hasTokens && obj.type !== 'CHECKPOINT' && !isError) continue;
+    if (!hasTokens && !isCheckpoint && !isError) continue;
 
     const input = obj.input_tokens ?? 0;
     const cacheRead = obj.cache_read_tokens ?? 0;
@@ -113,12 +146,13 @@ function parseConversation(id) {
 
     let cacheDrop = false;
     let afterCompaction = false;
-    if (events.length > 0 && hasTokens) {
-      const prev = events[events.length - 1];
-      afterCompaction = prev.type === 'CHECKPOINT';
-      if (prev.cacheRead > 10000 && cacheRead < prev.cacheRead * 0.5) {
+    if (hasTokens && !isCheckpoint) {
+      afterCompaction = sawCheckpointSinceLastToken;
+      if (!afterCompaction && lastTokenEvent && lastTokenEvent.cacheRead > 10000 && cacheRead < lastTokenEvent.cacheRead * 0.5) {
         cacheDrop = true;
       }
+      sawCheckpointSinceLastToken = false;
+      lastTokenEvent = { cacheRead, input, ts };
     }
 
     let detail = '';
