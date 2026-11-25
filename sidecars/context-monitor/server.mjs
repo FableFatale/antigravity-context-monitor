@@ -23,28 +23,60 @@ const MODEL_RE = /\b((?:gemini-(?:\d|pro|flash|ultra|exp)|claude-|gpt-|o[134]-)[
 
 const parseCache = new Map();
 
+const TIER_MAP = {
+  xhigh: 'XHigh',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+  thinking: 'Thinking',
+  preview: 'Preview',
+};
+
+function formatTier(t) {
+  if (!t) return '';
+  const k = t.toLowerCase();
+  return ` (${TIER_MAP[k] || (k.charAt(0).toUpperCase() + k.slice(1))})`;
+}
+
 function normalizeModelName(raw) {
   const s = String(raw || '').trim();
   if (!s || s === 'unknown') return s;
   // Already human-readable display name (contains space or parentheses)
   if (/[\s()]/.test(s)) return s;
-  // Normalize raw DB/API model IDs like gemini-4-hydrogen-tiered-high, gemini-4-neon-medium, claude-sonnet-4-6
+  // Normalize raw transcript/DB/API model IDs into uniform human-readable display names
   const low = s.toLowerCase();
-  const gemMatch = low.match(/^gemini-(\d+(?:\.\d+)?)-([a-z0-9]+)(?:-tiered)?(?:-(xhigh|high|medium|low|thinking|preview))?$/);
+  const gemMatch = low.match(/^gemini-(\d+(?:\.\d+)?)-([a-z0-9]+)(?:-tiered)?(?:-(xhigh|high|medium|low|thinking|preview))?(?:-[a-z0-9]{1,3})?$/);
   if (gemMatch) {
     const ver = gemMatch[1];
     const fam = gemMatch[2].charAt(0).toUpperCase() + gemMatch[2].slice(1);
-    const tierMap = { xhigh: 'XHigh', high: 'High', medium: 'Medium', low: 'Low', thinking: 'Thinking', preview: 'Preview' };
-    const tier = gemMatch[3] ? ` (${tierMap[gemMatch[3]] || gemMatch[3]})` : '';
-    return `Gemini ${ver} ${fam}${tier}`;
+    return `Gemini ${ver} ${fam}${formatTier(gemMatch[3])}`;
   }
-  const claudeMatch = low.match(/^claude-([a-z]+)-(\d+)(?:-(\d+))?(?:-(thinking|xhigh|high|medium|low))?$/);
+  const claudeMatch = low.match(/^claude-([a-z]+)-(\d+)(?:[.-](\d+))?(?:-(thinking))?(?:-(xhigh|high|medium|low))?$/);
   if (claudeMatch) {
     const fam = claudeMatch[1].charAt(0).toUpperCase() + claudeMatch[1].slice(1);
     const ver = claudeMatch[3] ? `${claudeMatch[2]}.${claudeMatch[3]}` : claudeMatch[2];
-    const tierMap = { thinking: 'Thinking', xhigh: 'XHigh', high: 'High', medium: 'Medium', low: 'Low' };
-    const tier = claudeMatch[4] ? ` (${tierMap[claudeMatch[4]] || claudeMatch[4]})` : '';
+    const parts = [];
+    if (claudeMatch[4]) parts.push(TIER_MAP[claudeMatch[4]] || claudeMatch[4]);
+    if (claudeMatch[5]) parts.push(TIER_MAP[claudeMatch[5]] || claudeMatch[5]);
+    const tier = parts.length > 0 ? ` (${parts.join(' · ')})` : '';
     return `Claude ${fam} ${ver}${tier}`;
+  }
+  const gptOssMatch = low.match(/^gpt-oss-([a-z0-9.]+)(?:-(xhigh|high|medium|low|thinking))?$/);
+  if (gptOssMatch) {
+    const size = gptOssMatch[1].toUpperCase();
+    return `GPT-OSS ${size}${formatTier(gptOssMatch[2])}`;
+  }
+  const gptMatch = low.match(/^gpt-(\d+(?:\.\d+)?[a-z]?)(?:-(mini|nano|turbo|pro))?(?:-(xhigh|high|medium|low|thinking))?$/);
+  if (gptMatch) {
+    const ver = gptMatch[1];
+    const sub = gptMatch[2] ? ` ${gptMatch[2].charAt(0).toUpperCase() + gptMatch[2].slice(1)}` : '';
+    return `GPT-${ver}${sub}${formatTier(gptMatch[3])}`;
+  }
+  const oMatch = low.match(/^(o[134])(?:-(mini|pro|preview))?(?:-(xhigh|high|medium|low))?$/);
+  if (oMatch) {
+    const base = oMatch[1].toUpperCase();
+    const sub = oMatch[2] ? ` ${oMatch[2].charAt(0).toUpperCase() + oMatch[2].slice(1)}` : '';
+    return `${base}${sub}${formatTier(oMatch[3])}`;
   }
   return s;
 }
@@ -119,8 +151,17 @@ function parseConversation(id) {
       if (fm && fm[1]) runningTaskIds.delete(fm[1]);
     }
 
+    let stepModel = '';
+    if (typeof obj.model === 'string' && obj.model.trim()) {
+      const normalized = normalizeModelName(obj.model);
+      if (normalized) {
+        stepModel = normalized;
+        currentModel = normalized;
+      }
+    }
+
     if (typeof obj.content === 'string') {
-      const mMatch = obj.content.match(/Model Selection.*?to\s+([^\n<]+?)(?:\.\s+(?:No need|If reporting)|\.?\s*(?:\n|<|$))/i);
+      const mMatch = obj.content.match(/(?:changed\s+setting\s+`?Model Selection`?|Model Selection\s+from)\b[^\n]{0,120}?\bto\s+([A-Za-z][^\n<`"]{1,58}?)(?:\.\s+(?:No need|If reporting)|\.?\s*(?:\n|<|$))/i);
       if (mMatch && mMatch[1]) {
         const cleaned = normalizeModelName(mMatch[1].replace(/\.+$/, '').trim());
         if (cleaned) currentModel = cleaned;
@@ -176,7 +217,7 @@ function parseConversation(id) {
     events.push({
       convId: id,
       convTitle: title || id.slice(0, 8),
-      model: currentModel || '',
+      model: stepModel || currentModel || '',
       step: obj.step_index ?? 0,
       type: obj.type || 'PLANNER_RESPONSE',
       status: obj.status || 'DONE',
@@ -196,7 +237,7 @@ function parseConversation(id) {
   }
 
   const dbModel = detectModelFromDb(id);
-  const resolvedModel = dbModel || currentModel || 'unknown';
+  const resolvedModel = currentModel || dbModel || 'unknown';
   const resolvedTitle = title || id.slice(0, 8);
   for (const e of events) {
     e.convTitle = resolvedTitle;

@@ -1,6 +1,6 @@
 {
   "name": "antigravity-context-monitor-mcp",
-  "version": "1.8.5",
+  "version": "1.8.6",
   "description": "MCP App server for Antigravity Context & Cache Monitor plugin",
   "main": "server.mjs",
   "scripts": {
