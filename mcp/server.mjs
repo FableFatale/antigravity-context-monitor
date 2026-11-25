@@ -16,6 +16,7 @@ import {
   triggerCompactNow,
   snoozeAutoCompact,
   evaluateAutoCompact,
+  installRtkCli,
   getIndexHtml,
 } from '../sidecars/context-monitor/server.mjs';
 
@@ -147,6 +148,9 @@ async function mcpFetch(urlStr, opts) {
   }
   if (url.pathname.endsWith('/api/auto-compact/test') && method === 'POST') {
     return makeJsonResponse(await callAppTool('test_auto_compact', {}));
+  }
+  if (url.pathname.endsWith('/api/rtk/install') && method === 'POST') {
+    return makeJsonResponse(await callAppTool('install_rtk', {}));
   }
   return { ok: false, status: 404, async json() { return {}; }, async text() { return 'Not found'; } };
 }
@@ -304,6 +308,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       inputSchema: { type: 'object', properties: {} },
       _meta: { ui: { visibility: ['app'] } },
     },
+    {
+      name: 'install_rtk',
+      title: 'Install RTK CLI',
+      description: 'App-only tool to auto-install RTK CLI via winget/brew/cargo and link telemetry.',
+      inputSchema: { type: 'object', properties: {} },
+      _meta: { ui: { visibility: ['app'] } },
+    },
   ],
 }));
 
@@ -363,6 +374,14 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
     return {
       content: [{ type: 'text', text: result.message || 'ok' }],
       structuredContent: { result, status: getAutoCompactStatus() },
+    };
+  }
+
+  if (name === 'install_rtk') {
+    const result = await installRtkCli();
+    return {
+      content: [{ type: 'text', text: result.message || 'ok' }],
+      structuredContent: result,
     };
   }
 

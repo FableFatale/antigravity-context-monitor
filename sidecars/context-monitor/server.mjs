@@ -1344,6 +1344,52 @@ const rtkCache = {
   lastUpdatedAt: 0,
 };
 
+const rtkInstallState = {
+  running: false,
+  status: 'idle', // 'idle' | 'installing' | 'ok' | 'error'
+  method: '',
+  message: '',
+  installedPath: '',
+  startedAt: 0,
+  finishedAt: 0,
+};
+
+function findKnownRtkBinary() {
+  const customBin = String(autoCompactConfig.rtkPath || '').trim();
+  if (customBin && existsSync(customBin)) return customBin;
+  const isWin = process.platform === 'win32';
+  const candidates = isWin
+    ? [
+        join(process.env.LOCALAPPDATA || join(homedir(), 'AppData', 'Local'), 'Microsoft', 'WinGet', 'Links', 'rtk.exe'),
+        join(homedir(), '.cargo', 'bin', 'rtk.exe'),
+        join(homedir(), 'scoop', 'shims', 'rtk.exe'),
+      ]
+    : [
+        '/opt/homebrew/bin/rtk',
+        '/usr/local/bin/rtk',
+        join(homedir(), '.cargo', 'bin', 'rtk'),
+        join(homedir(), '.local', 'bin', 'rtk'),
+      ];
+  for (const p of candidates) {
+    if (existsSync(p)) return p;
+  }
+  return '';
+}
+
+function execFileAsync(cmd, args, opts = {}) {
+  return new Promise((resolve) => {
+    execFile(cmd, args, { encoding: 'utf8', windowsHide: true, ...opts }, (err, stdout, stderr) => {
+      resolve({
+        ok: !err,
+        code: err && typeof err.code === 'number' ? err.code : (err ? 1 : 0),
+        stdout: String(stdout || ''),
+        stderr: String(stderr || ''),
+        error: err ? String(err.message || err) : '',
+      });
+    });
+  });
+}
+
 function refreshRtkStatsAsync(force = false) {
   const now = Date.now();
   const ttl = rtkCache.installed ? RTK_CACHE_TTL_MS : RTK_MISS_TTL_MS;
@@ -1351,60 +1397,168 @@ function refreshRtkStatsAsync(force = false) {
   rtkCache.inFlight = true;
   rtkCache.pluginInstalled = existsSync(RTK_PLUGIN_PATH);
   const customBin = String(autoCompactConfig.rtkPath || '').trim();
-  const rtkBin = customBin || 'rtk';
+  const rtkBin = customBin || findKnownRtkBinary() || 'rtk';
   execFile(
     rtkBin,
     ['gain', '--daily', '--format', 'json'],
     { timeout: 2500, encoding: 'utf8', windowsHide: true },
-    (err, stdout) => {
-      rtkCache.inFlight = false;
-      rtkCache.checkedAt = Date.now();
-      if (err || !stdout) {
+    async (err, stdout) => {
+      try {
+        if (!err && stdout) {
+          const parsed = JSON.parse(String(stdout).trim());
+          const s = parsed?.summary;
+          if (s && typeof s === 'object') {
+            const dailyMap = {};
+            if (Array.isArray(parsed.daily)) {
+              for (const d of parsed.daily) {
+                if (!d?.date) continue;
+                dailyMap[d.date] = {
+                  date: d.date,
+                  commands: Number(d.commands) || 0,
+                  inputTokens: Number(d.input_tokens) || 0,
+                  outputTokens: Number(d.output_tokens) || 0,
+                  savedTokens: Number(d.saved_tokens) || 0,
+                  savingsPct: Number((Number(d.savings_pct) || 0).toFixed(1)),
+                };
+              }
+            }
+            rtkCache.installed = true;
+            rtkCache.summary = {
+              totalCommands: Number(s.total_commands) || 0,
+              totalInput: Number(s.total_input) || 0,
+              totalOutput: Number(s.total_output) || 0,
+              totalSaved: Number(s.total_saved) || 0,
+              avgSavingsPct: Number((Number(s.avg_savings_pct) || 0).toFixed(1)),
+            };
+            rtkCache.daily = dailyMap;
+            rtkCache.lastUpdatedAt = Date.now();
+            return;
+          }
+        }
+        // Fallback: freshly installed RTK may have no gain DB yet — verify with `rtk --version`
+        const ver = await execFileAsync(rtkBin, ['--version'], { timeout: 2000 });
+        if (ver.ok && /rtk/i.test(ver.stdout + ver.stderr)) {
+          rtkCache.installed = true;
+          rtkCache.summary = { totalCommands: 0, totalInput: 0, totalOutput: 0, totalSaved: 0, avgSavingsPct: 0 };
+          rtkCache.daily = {};
+          rtkCache.lastUpdatedAt = Date.now();
+          return;
+        }
         rtkCache.installed = false;
         rtkCache.summary = null;
         rtkCache.daily = {};
-        return;
-      }
-      try {
-        const parsed = JSON.parse(String(stdout).trim());
-        const s = parsed?.summary;
-        if (!s || typeof s !== 'object') {
-          rtkCache.installed = false;
-          rtkCache.summary = null;
-          rtkCache.daily = {};
-          return;
-        }
-        const dailyMap = {};
-        if (Array.isArray(parsed.daily)) {
-          for (const d of parsed.daily) {
-            if (!d?.date) continue;
-            dailyMap[d.date] = {
-              date: d.date,
-              commands: Number(d.commands) || 0,
-              inputTokens: Number(d.input_tokens) || 0,
-              outputTokens: Number(d.output_tokens) || 0,
-              savedTokens: Number(d.saved_tokens) || 0,
-              savingsPct: Number((Number(d.savings_pct) || 0).toFixed(1)),
-            };
-          }
-        }
-        rtkCache.installed = true;
-        rtkCache.summary = {
-          totalCommands: Number(s.total_commands) || 0,
-          totalInput: Number(s.total_input) || 0,
-          totalOutput: Number(s.total_output) || 0,
-          totalSaved: Number(s.total_saved) || 0,
-          avgSavingsPct: Number((Number(s.avg_savings_pct) || 0).toFixed(1)),
-        };
-        rtkCache.daily = dailyMap;
-        rtkCache.lastUpdatedAt = Date.now();
       } catch {
         rtkCache.installed = false;
         rtkCache.summary = null;
         rtkCache.daily = {};
+      } finally {
+        rtkCache.inFlight = false;
+        rtkCache.checkedAt = Date.now();
       }
     }
   );
+}
+
+export async function installRtkCli() {
+  if (rtkInstallState.running) {
+    return { ok: false, running: true, state: { ...rtkInstallState }, message: 'RTK installation is already running' };
+  }
+  const existing = findKnownRtkBinary();
+  if (existing) {
+    const ver = await execFileAsync(existing, ['--version'], { timeout: 2000 });
+    if (ver.ok) {
+      if (!autoCompactConfig.rtkPath) {
+        autoCompactConfig.rtkPath = existing;
+        saveAutoCompactConfig(autoCompactConfig);
+      }
+      rtkCache.checkedAt = 0;
+      refreshRtkStatsAsync(true);
+      rtkInstallState.status = 'ok';
+      rtkInstallState.method = 'detected';
+      rtkInstallState.installedPath = existing;
+      rtkInstallState.message = `Detected existing RTK at ${existing}`;
+      rtkInstallState.finishedAt = Date.now();
+      return { ok: true, state: { ...rtkInstallState }, message: rtkInstallState.message };
+    }
+  }
+
+  rtkInstallState.running = true;
+  rtkInstallState.status = 'installing';
+  rtkInstallState.method = '';
+  rtkInstallState.message = '';
+  rtkInstallState.installedPath = '';
+  rtkInstallState.startedAt = Date.now();
+  rtkInstallState.finishedAt = 0;
+
+  try {
+    const isWin = process.platform === 'win32';
+    const isMac = process.platform === 'darwin';
+    const plan = isWin
+      ? [
+          {
+            method: 'winget',
+            cmd: 'winget',
+            args: ['install', '--id', 'rtk-ai.rtk', '-e', '--accept-package-agreements', '--accept-source-agreements'],
+          },
+          { method: 'cargo', cmd: 'cargo', args: ['install', 'rtk'] },
+        ]
+      : isMac
+      ? [
+          { method: 'brew', cmd: 'brew', args: ['install', 'rtk'] },
+          { method: 'cargo', cmd: 'cargo', args: ['install', 'rtk'] },
+        ]
+      : [
+          { method: 'brew', cmd: 'brew', args: ['install', 'rtk'] },
+          { method: 'cargo', cmd: 'cargo', args: ['install', 'rtk'] },
+        ];
+
+    const attempts = [];
+    let succeeded = null;
+    for (const step of plan) {
+      rtkInstallState.method = step.method;
+      const probe = await execFileAsync(step.cmd, ['--version'], { timeout: 3000 });
+      if (!probe.ok) {
+        attempts.push(`${step.method}: not found`);
+        continue;
+      }
+      const res = await execFileAsync(step.cmd, step.args, { timeout: 180000 });
+      if (res.ok) {
+        succeeded = step.method;
+        break;
+      }
+      const errSnippet = (res.stderr || res.stdout || res.error || 'failed').trim().split(/\r?\n/).slice(-2).join(' ').slice(0, 180);
+      attempts.push(`${step.method}: ${errSnippet}`);
+    }
+
+    if (!succeeded) {
+      rtkInstallState.status = 'error';
+      rtkInstallState.message = attempts.length > 0
+        ? `Auto-install failed (${attempts.join(' | ')})`
+        : 'No supported package manager (winget / brew / cargo) found';
+      rtkInstallState.finishedAt = Date.now();
+      return { ok: false, state: { ...rtkInstallState }, message: rtkInstallState.message };
+    }
+
+    const detected = findKnownRtkBinary();
+    if (detected) {
+      autoCompactConfig.rtkPath = detected;
+      saveAutoCompactConfig(autoCompactConfig);
+      try { autoCompactConfigMtime = statSync(AUTO_COMPACT_PATH).mtimeMs; } catch {}
+    }
+    rtkCache.checkedAt = 0;
+    refreshRtkStatsAsync(true);
+
+    rtkInstallState.status = 'ok';
+    rtkInstallState.method = succeeded;
+    rtkInstallState.installedPath = detected || 'rtk';
+    rtkInstallState.message = detected
+      ? `Installed via ${succeeded} (${detected})`
+      : `Installed via ${succeeded}`;
+    rtkInstallState.finishedAt = Date.now();
+    return { ok: true, state: { ...rtkInstallState }, message: rtkInstallState.message };
+  } finally {
+    rtkInstallState.running = false;
+  }
 }
 
 function getRtkStatsSnapshot(targetDay = '') {
@@ -1420,6 +1574,7 @@ function getRtkStatsSnapshot(targetDay = '') {
     day: dayEntry,
     recentDays,
     lastUpdatedAt: rtkCache.lastUpdatedAt,
+    installState: { ...rtkInstallState },
   };
 }
 
@@ -1554,6 +1709,13 @@ const server = createServer(async (req, res) => {
     const result = await evaluateAutoCompact(true);
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify({ result, status: getAutoCompactStatus() }));
+    return;
+  }
+
+  if (url.pathname === '/api/rtk/install' && req.method === 'POST') {
+    const result = await installRtkCli();
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify(result));
     return;
   }
 

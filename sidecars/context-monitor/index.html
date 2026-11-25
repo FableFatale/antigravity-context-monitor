@@ -888,6 +888,7 @@
       <span class="brand-title">Context &amp; Cache</span>
       <span class="status-badge" id="lastActiveBadge" data-i18n="loading">加载中…</span>
       <button type="button" class="status-badge rtk-pill" id="rtkTopBadge" style="display:none" title="RTK Output Condenser"></button>
+      <button type="button" class="btn btn-primary btn-xs" id="rtkTopInstallBtn" style="display:none;height:22px;padding:0 9px;border-radius:999px;font-size:11px" data-i18n="rtkInstallBtn">安装 RTK</button>
       <div class="filter-chips" id="filterChips"></div>
     </div>
 
@@ -1562,6 +1563,11 @@ const I18N = {
     idleGuardHintAuto: (minK, mins, lim, samples, used) => `Auto-derived from ${samples} drop-gap samples & threshold: ≥${minK}K & idle ≥${mins}m (used ${used}/${lim} this hour).`,
     idleGuardHintManual: (minK, mins, lim, used) => `Manual override: ≥${minK}K & idle ≥${mins}m (used ${used}/${lim} this hour).`,
     tagIdle: '[Idle]',
+    rtkInstallBtn: 'Install RTK',
+    rtkInstallingBtn: 'Installing…',
+    rtkInstallStarted: 'Installing RTK CLI automatically (winget / brew / cargo)…',
+    rtkInstallOk: (msg) => `RTK installed & linked: ${msg}`,
+    rtkInstallFail: (msg) => `RTK auto-install failed: ${msg}`,
   },
   zh: {
     langAuto: '自动 (跟随系统)',
@@ -1778,6 +1784,11 @@ const I18N = {
     idleGuardHintAuto: (minK, mins, lim, samples, used) => `已按当前阈值与 ${samples} 条闲置骤降样本动态推导：≥${minK}K 且静默 ≥${mins} 分钟触发（本小时已触发 ${used}/${lim} 次）。`,
     idleGuardHintManual: (minK, mins, lim, used) => `手动覆盖：≥${minK}K 且静默 ≥${mins} 分钟触发（本小时已触发 ${used}/${lim} 次）。`,
     tagIdle: '[闲置]',
+    rtkInstallBtn: '自动安装 RTK',
+    rtkInstallingBtn: '安装中…',
+    rtkInstallStarted: '正在自动调用 winget / brew / cargo 安装 RTK CLI…',
+    rtkInstallOk: (msg) => `RTK 安装成功并已自动联动：${msg}`,
+    rtkInstallFail: (msg) => `RTK 自动安装失败：${msg}`,
   },
   ja: {
     langAuto: '自動 (システム言語)',
@@ -1994,6 +2005,11 @@ const I18N = {
     idleGuardHintAuto: (minK, mins, lim, samples, used) => `${samples} 件の急落間隔サンプルとしきい値から自動算出：≥${minK}K・無操作 ≥${mins}分（直近1時間 ${used}/${lim} 回）。`,
     idleGuardHintManual: (minK, mins, lim, used) => `手動設定：≥${minK}K・無操作 ≥${mins}分（直近1時間 ${used}/${lim} 回）。`,
     tagIdle: '[アイドル]',
+    rtkInstallBtn: 'RTK を自動インストール',
+    rtkInstallingBtn: 'インストール中…',
+    rtkInstallStarted: 'RTK CLI を自動インストールしています (winget / brew / cargo)…',
+    rtkInstallOk: (msg) => `RTK をインストールして連携しました: ${msg}`,
+    rtkInstallFail: (msg) => `RTK 自動インストールに失敗しました: ${msg}`,
   },
   fr: {
     langAuto: 'Auto (Système)',
@@ -2210,6 +2226,11 @@ const I18N = {
     idleGuardHintAuto: (minK, mins, lim, samples, used) => `Calculé dynamiquement (${samples} échantillons) : ≥${minK}K et inactif ≥${mins} min (${used}/${lim} cette heure).`,
     idleGuardHintManual: (minK, mins, lim, used) => `Manuel : ≥${minK}K et inactif ≥${mins} min (${used}/${lim} cette heure).`,
     tagIdle: '[Inactif]',
+    rtkInstallBtn: 'Installer RTK',
+    rtkInstallingBtn: 'Installation…',
+    rtkInstallStarted: 'Installation automatique de RTK CLI (winget / brew / cargo)…',
+    rtkInstallOk: (msg) => `RTK installé et lié : ${msg}`,
+    rtkInstallFail: (msg) => `Échec de l’installation RTK : ${msg}`,
   },
   de: {
     langAuto: 'Auto (System)',
@@ -2426,6 +2447,11 @@ const I18N = {
     idleGuardHintAuto: (minK, mins, lim, samples, used) => `Dynamisch aus ${samples} Einbruch-Intervallen berechnet: ≥${minK}K & Leerlauf ≥${mins} Min. (${used}/${lim} diese Std.).`,
     idleGuardHintManual: (minK, mins, lim, used) => `Manuell: ≥${minK}K & Leerlauf ≥${mins} Min. (${used}/${lim} diese Std.).`,
     tagIdle: '[Leerlauf]',
+    rtkInstallBtn: 'RTK installieren',
+    rtkInstallingBtn: 'Installiere…',
+    rtkInstallStarted: 'RTK CLI wird automatisch installiert (winget / brew / cargo)…',
+    rtkInstallOk: (msg) => `RTK installiert & verbunden: ${msg}`,
+    rtkInstallFail: (msg) => `RTK-Installation fehlgeschlagen: ${msg}`,
   },
 };
 
@@ -3060,13 +3086,49 @@ function renderAutoCompact(d) {
   }
 }
 
-/* RTK Output Condenser Telemetry & Optional Install Companion */
+/* RTK Output Condenser Telemetry & Optional Auto-Install Companion */
+let rtkInstallInFlight = false;
+
+async function triggerRtkAutoInstall() {
+  const dict = T();
+  if (rtkInstallInFlight) return;
+  rtkInstallInFlight = true;
+  if (state.data) renderRtkSection(state.data);
+  showUiToast(dict.rtkInstallStarted);
+  try {
+    const res = await fetch('./api/rtk/install', { method: 'POST' });
+    let data = {};
+    try { data = await res.json(); } catch {}
+    if (data && data.ok) {
+      showUiToast(dict.rtkInstallOk(data.message || 'ok'));
+    } else {
+      showUiToast(dict.rtkInstallFail(data?.message || `HTTP ${res.status}`));
+    }
+  } catch (err) {
+    showUiToast(dict.rtkInstallFail(String(err?.message || err || 'Network error')));
+  } finally {
+    rtkInstallInFlight = false;
+    setTimeout(() => fetchData(), 600);
+  }
+}
+
+document.getElementById('rtkTopInstallBtn').onclick = () => {
+  openDrawer();
+  requestAnimationFrame(() => {
+    document.getElementById('rtkDrawerSection')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+  triggerRtkAutoInstall();
+};
+
 function renderRtkSection(d) {
   const dict = T();
   const rtk = d.rtkStats || {};
   const topPill = document.getElementById('rtkTopBadge');
+  const topInstallBtn = document.getElementById('rtkTopInstallBtn');
   const box = document.getElementById('rtkDrawerSection');
   if (!box) return;
+
+  const isInstalling = Boolean(rtkInstallInFlight || rtk.installState?.running);
 
   if (rtk.installed && rtk.summary) {
     const s = rtk.summary;
@@ -3075,6 +3137,7 @@ function renderRtkSection(d) {
       topPill.className = 'status-badge rtk-pill';
       topPill.style.display = 'inline-flex';
     }
+    if (topInstallBtn) topInstallBtn.style.display = 'none';
     const dayStr = d.targetDay || state.day;
     const dayLine = rtk.day && rtk.day.commands > 0
       ? dict.rtkDaySummary(dayStr, rtk.day.commands.toLocaleString(), fmtNum(rtk.day.savedTokens), rtk.day.savingsPct)
@@ -3108,21 +3171,38 @@ function renderRtkSection(d) {
       topPill.className = 'status-badge rtk-pill muted';
       topPill.style.display = 'inline-flex';
     }
+    if (topInstallBtn) {
+      topInstallBtn.textContent = isInstalling ? dict.rtkInstallingBtn : dict.rtkInstallBtn;
+      topInstallBtn.disabled = isInstalling;
+      topInstallBtn.style.display = 'inline-flex';
+    }
     // Preserve focus while user is typing a custom RTK executable path
     if (document.activeElement && document.activeElement.id === 'rtkPathInput') return;
     const savedPath = rtk.customPath || '';
-    const cmds = ['winget install rtk', 'brew install rtk', 'cargo install rtk'];
+    const cmds = ['winget install --id rtk-ai.rtk -e', 'brew install rtk', 'cargo install rtk'];
+    const st = rtk.installState || {};
+    const statusLine = isInstalling
+      ? `<div style="font-size:11px;color:var(--indigo);font-weight:500">${escHtml(dict.rtkInstallStarted)}</div>`
+      : (st.status === 'error' && st.message)
+      ? `<div style="font-size:11px;color:var(--red);line-height:1.45">${escHtml(st.message)}</div>`
+      : (st.status === 'ok' && st.message)
+      ? `<div style="font-size:11px;color:var(--emerald);line-height:1.45">${escHtml(st.message)}</div>`
+      : '';
     box.innerHTML = `
       <div class="drawer-sec-head">
         <span>${escHtml(dict.rtkSecTitle)}</span>
-        <span class="status-badge">${escHtml(dict.rtkFallbackBadge)}</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="status-badge">${escHtml(dict.rtkFallbackBadge)}</span>
+          <button type="button" id="rtkDrawerInstallBtn" class="btn btn-primary btn-xs" ${isInstalling ? 'disabled' : ''}>${escHtml(isInstalling ? dict.rtkInstallingBtn : dict.rtkInstallBtn)}</button>
+        </div>
       </div>
+      ${statusLine}
       <div style="font-size:11px;color:var(--muted);line-height:1.5">${escHtml(dict.rtkFallbackDesc)}</div>
       <div style="display:flex;flex-direction:column;gap:4px">
         <span style="font-size:11px;color:var(--muted)">${escHtml(dict.rtkPathLabel)}</span>
         <div class="rtk-path-row">
           <input type="text" id="rtkPathInput" class="p-input" style="flex:1;min-width:0" value="${escHtml(savedPath)}" placeholder="${escHtml(dict.rtkPathPlaceholder)}" />
-          <button type="button" id="rtkPathApplyBtn" class="btn btn-primary btn-xs">${escHtml(dict.rtkPathApply)}</button>
+          <button type="button" id="rtkPathApplyBtn" class="btn btn-xs">${escHtml(dict.rtkPathApply)}</button>
         </div>
       </div>
       <div class="rtk-cmd-list">
@@ -3137,6 +3217,8 @@ function renderRtkSection(d) {
         <a class="rtk-repo-link" href="https://github.com/rtk-ai/rtk" target="_blank" rel="noopener noreferrer">${escHtml(dict.rtkRepoLink)}</a>
       </div>
     `;
+    const drawerInstallBtn = document.getElementById('rtkDrawerInstallBtn');
+    if (drawerInstallBtn) drawerInstallBtn.onclick = triggerRtkAutoInstall;
     const applyPath = async () => {
       const val = (document.getElementById('rtkPathInput')?.value || '').trim();
       await fetch('./api/auto-compact', {
