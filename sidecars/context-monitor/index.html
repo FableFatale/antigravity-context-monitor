@@ -840,6 +840,55 @@
     font-weight: 500;
   }
   .rtk-repo-link:hover { text-decoration: underline; }
+  .rtk-info-wrap { position: relative; display: inline-flex; align-items: center; }
+  .rtk-info-btn {
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    border: 1px solid var(--border-strong);
+    background: var(--card);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    transition: all .12s;
+  }
+  .rtk-info-btn:hover, .rtk-info-wrap.open .rtk-info-btn {
+    border-color: var(--indigo);
+    color: var(--indigo);
+    background: rgba(37, 99, 235, 0.06);
+  }
+  .rtk-info-pop {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    width: 232px;
+    background: var(--card);
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    padding: 10px 12px;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
+    z-index: 90;
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    font-weight: 400;
+  }
+  .rtk-info-wrap:hover .rtk-info-pop,
+  .rtk-info-wrap.open .rtk-info-pop { display: flex; }
+  .rtk-info-pop::before {
+    content: "";
+    position: absolute;
+    top: -8px;
+    left: 0;
+    right: 0;
+    height: 8px;
+  }
   .rtk-cmd-list { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
   .rtk-cmd-row {
     display: flex;
@@ -1568,6 +1617,9 @@ const I18N = {
     rtkInstallStarted: 'Installing RTK CLI automatically (winget / brew / cargo)…',
     rtkInstallOk: (msg) => `RTK installed & linked: ${msg}`,
     rtkInstallFail: (msg) => `RTK auto-install failed: ${msg}`,
+    rtkInfoTitle: 'RTK Official Repository',
+    rtkInfoDesc: 'Open-source Rust Token Killer (Apache-2.0). Click Install to auto-install for your OS, or download directly:',
+    rtkReleasesLink: 'Pre-built Releases ↗',
   },
   zh: {
     langAuto: '自动 (跟随系统)',
@@ -1789,6 +1841,9 @@ const I18N = {
     rtkInstallStarted: '正在自动调用 winget / brew / cargo 安装 RTK CLI…',
     rtkInstallOk: (msg) => `RTK 安装成功并已自动联动：${msg}`,
     rtkInstallFail: (msg) => `RTK 自动安装失败：${msg}`,
+    rtkInfoTitle: 'RTK 官方原仓库',
+    rtkInfoDesc: '开源项目 Rust Token Killer (Apache-2.0)。点击「自动安装 RTK」将按当前系统自动安装，也可直达原仓库下载：',
+    rtkReleasesLink: '预编译安装包 (Releases) ↗',
   },
   ja: {
     langAuto: '自動 (システム言語)',
@@ -2010,6 +2065,9 @@ const I18N = {
     rtkInstallStarted: 'RTK CLI を自動インストールしています (winget / brew / cargo)…',
     rtkInstallOk: (msg) => `RTK をインストールして連携しました: ${msg}`,
     rtkInstallFail: (msg) => `RTK 自動インストールに失敗しました: ${msg}`,
+    rtkInfoTitle: 'RTK 公式リポジトリ',
+    rtkInfoDesc: 'オープンソース Rust Token Killer (Apache-2.0)。OS に合わせて自動インストールまたは直接ダウンロードできます：',
+    rtkReleasesLink: 'ビルド済み Releases ↗',
   },
   fr: {
     langAuto: 'Auto (Système)',
@@ -2231,6 +2289,9 @@ const I18N = {
     rtkInstallStarted: 'Installation automatique de RTK CLI (winget / brew / cargo)…',
     rtkInstallOk: (msg) => `RTK installé et lié : ${msg}`,
     rtkInstallFail: (msg) => `Échec de l’installation RTK : ${msg}`,
+    rtkInfoTitle: 'Dépôt officiel RTK',
+    rtkInfoDesc: 'Projet open source Rust Token Killer (Apache-2.0). Cliquez sur Installer ou téléchargez depuis GitHub :',
+    rtkReleasesLink: 'Binaires Releases ↗',
   },
   de: {
     langAuto: 'Auto (System)',
@@ -2452,6 +2513,9 @@ const I18N = {
     rtkInstallStarted: 'RTK CLI wird automatisch installiert (winget / brew / cargo)…',
     rtkInstallOk: (msg) => `RTK installiert & verbunden: ${msg}`,
     rtkInstallFail: (msg) => `RTK-Installation fehlgeschlagen: ${msg}`,
+    rtkInfoTitle: 'Offizielles RTK-Repository',
+    rtkInfoDesc: 'Open-Source Rust Token Killer (Apache-2.0). Automatisch für Ihr OS installieren oder direkt herunterladen:',
+    rtkReleasesLink: 'Vorkompilierte Releases ↗',
   },
 };
 
@@ -2827,6 +2891,7 @@ function initCustomSelect(id) {
 document.addEventListener('click', (e) => {
   if (!dayDropdown.contains(e.target)) dayDropdown.classList.remove('open');
   if (!e.target.closest('.p-select-wrap')) closeAllCustomSelects(null);
+  if (!e.target.closest('.rtk-info-wrap')) document.getElementById('rtkInfoWrap')?.classList.remove('open');
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
@@ -3129,6 +3194,17 @@ function renderRtkSection(d) {
   if (!box) return;
 
   const isInstalling = Boolean(rtkInstallInFlight || rtk.installState?.running);
+  const repoInfoHtml = `
+    <span class="rtk-info-wrap" id="rtkInfoWrap">
+      <button type="button" class="rtk-info-btn" id="rtkInfoBtn" aria-label="${escHtml(dict.rtkInfoTitle)}" title="${escHtml(dict.rtkInfoTitle)}">i</button>
+      <div class="rtk-info-pop">
+        <div style="font-size:11.5px;font-weight:700;color:var(--text)">${escHtml(dict.rtkInfoTitle)}</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.45">${escHtml(dict.rtkInfoDesc)}</div>
+        <a class="rtk-repo-link" href="https://github.com/rtk-ai/rtk" target="_blank" rel="noopener noreferrer">github.com/rtk-ai/rtk ↗</a>
+        <a class="rtk-repo-link" href="https://github.com/rtk-ai/rtk/releases" target="_blank" rel="noopener noreferrer">${escHtml(dict.rtkReleasesLink)}</a>
+      </div>
+    </span>
+  `;
 
   if (rtk.installed && rtk.summary) {
     const s = rtk.summary;
@@ -3146,7 +3222,10 @@ function renderRtkSection(d) {
     box.innerHTML = `
       <div class="drawer-sec-head">
         <span>${escHtml(dict.rtkSecTitle)}</span>
-        <span class="status-badge active">${escHtml(dict.rtkLinked)}</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="status-badge active">${escHtml(dict.rtkLinked)}</span>
+          ${repoInfoHtml}
+        </div>
       </div>
       <div class="ref-grid">
         <div class="ref-box">
@@ -3179,7 +3258,6 @@ function renderRtkSection(d) {
     // Preserve focus while user is typing a custom RTK executable path
     if (document.activeElement && document.activeElement.id === 'rtkPathInput') return;
     const savedPath = rtk.customPath || '';
-    const cmds = ['winget install --id rtk-ai.rtk -e', 'brew install rtk', 'cargo install rtk'];
     const st = rtk.installState || {};
     const statusLine = isInstalling
       ? `<div style="font-size:11px;color:var(--indigo);font-weight:500">${escHtml(dict.rtkInstallStarted)}</div>`
@@ -3192,8 +3270,8 @@ function renderRtkSection(d) {
       <div class="drawer-sec-head">
         <span>${escHtml(dict.rtkSecTitle)}</span>
         <div style="display:flex;align-items:center;gap:6px">
-          <span class="status-badge">${escHtml(dict.rtkFallbackBadge)}</span>
           <button type="button" id="rtkDrawerInstallBtn" class="btn btn-primary btn-xs" ${isInstalling ? 'disabled' : ''}>${escHtml(isInstalling ? dict.rtkInstallingBtn : dict.rtkInstallBtn)}</button>
+          ${repoInfoHtml}
         </div>
       </div>
       ${statusLine}
@@ -3204,17 +3282,6 @@ function renderRtkSection(d) {
           <input type="text" id="rtkPathInput" class="p-input" style="flex:1;min-width:0" value="${escHtml(savedPath)}" placeholder="${escHtml(dict.rtkPathPlaceholder)}" />
           <button type="button" id="rtkPathApplyBtn" class="btn btn-xs">${escHtml(dict.rtkPathApply)}</button>
         </div>
-      </div>
-      <div class="rtk-cmd-list">
-        ${cmds.map((c) => `
-          <div class="rtk-cmd-row">
-            <code class="rtk-cmd-code">${escHtml(c)}</code>
-            <button type="button" class="btn btn-xs rtk-copy-cmd" data-cmd="${escHtml(c)}">${escHtml(dict.rtkCopyBtn)}</button>
-          </div>
-        `).join('')}
-      </div>
-      <div style="display:flex;justify-content:flex-end;margin-top:2px">
-        <a class="rtk-repo-link" href="https://github.com/rtk-ai/rtk" target="_blank" rel="noopener noreferrer">${escHtml(dict.rtkRepoLink)}</a>
       </div>
     `;
     const drawerInstallBtn = document.getElementById('rtkDrawerInstallBtn');
@@ -3235,15 +3302,14 @@ function renderRtkSection(d) {
     if (pathInput) {
       pathInput.onkeydown = (e) => { if (e.key === 'Enter') applyPath(); };
     }
-    box.querySelectorAll('.rtk-copy-cmd').forEach((btn) => {
-      btn.onclick = async () => {
-        const cmd = btn.dataset.cmd || '';
-        try {
-          await navigator.clipboard.writeText(cmd);
-          showUiToast(dict.rtkCopied(cmd));
-        } catch {}
-      };
-    });
+  }
+  const infoBtn = document.getElementById('rtkInfoBtn');
+  const infoWrap = document.getElementById('rtkInfoWrap');
+  if (infoBtn && infoWrap) {
+    infoBtn.onclick = (e) => {
+      e.stopPropagation();
+      infoWrap.classList.toggle('open');
+    };
   }
 }
 

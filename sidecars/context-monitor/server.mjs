@@ -1500,23 +1500,47 @@ export async function installRtkCli() {
             cmd: 'winget',
             args: ['install', '--id', 'rtk-ai.rtk', '-e', '--accept-package-agreements', '--accept-source-agreements'],
           },
-          { method: 'cargo', cmd: 'cargo', args: ['install', 'rtk'] },
+          {
+            method: 'cargo',
+            cmd: 'cargo',
+            args: ['install', '--git', 'https://github.com/rtk-ai/rtk', '--branch', 'master', 'rtk'],
+          },
         ]
       : isMac
       ? [
           { method: 'brew', cmd: 'brew', args: ['install', 'rtk'] },
-          { method: 'cargo', cmd: 'cargo', args: ['install', 'rtk'] },
+          {
+            method: 'install.sh',
+            cmd: 'sh',
+            args: ['-c', 'curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh'],
+            probeCmd: 'curl',
+          },
+          {
+            method: 'cargo',
+            cmd: 'cargo',
+            args: ['install', '--git', 'https://github.com/rtk-ai/rtk', '--branch', 'master', 'rtk'],
+          },
         ]
       : [
           { method: 'brew', cmd: 'brew', args: ['install', 'rtk'] },
-          { method: 'cargo', cmd: 'cargo', args: ['install', 'rtk'] },
+          {
+            method: 'install.sh',
+            cmd: 'sh',
+            args: ['-c', 'curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh'],
+            probeCmd: 'curl',
+          },
+          {
+            method: 'cargo',
+            cmd: 'cargo',
+            args: ['install', '--git', 'https://github.com/rtk-ai/rtk', '--branch', 'master', 'rtk'],
+          },
         ];
 
     const attempts = [];
     let succeeded = null;
     for (const step of plan) {
       rtkInstallState.method = step.method;
-      const probe = await execFileAsync(step.cmd, ['--version'], { timeout: 3000 });
+      const probe = await execFileAsync(step.probeCmd || step.cmd, ['--version'], { timeout: 3000 });
       if (!probe.ok) {
         attempts.push(`${step.method}: not found`);
         continue;

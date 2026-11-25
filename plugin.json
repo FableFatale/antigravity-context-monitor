@@ -1,7 +1,7 @@
 {
   "name": "context-monitor",
   "displayName": "Context & Cache Monitor",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "Antigravity left-sidebar MCP App, sidecar dashboard & PreInvocation context-guard hook for Gemini context compaction (CHECKPOINT), prefix cache hit rate, dynamic threshold advice, and Toast/Auto-Compact automation.",
   "logo": "assets/logo.svg",
   "suggestedPrompts": [
