@@ -1344,6 +1344,18 @@
 
     <!-- Recent Trigger History -->
     <div class="drawer-section" id="acHistoryBox" style="display:none"></div>
+
+    <!-- Plugin Version & On-Demand Updates -->
+    <div class="drawer-section" id="pluginUpdateSection">
+      <div class="drawer-sec-head">
+        <span data-i18n="pluginVerTitle">插件版本与更新</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="status-badge" id="pluginVerPill">v-</span>
+          <button type="button" id="pluginCheckUpdateBtn" class="btn btn-xs" data-i18n="pluginCheckBtn">检查更新</button>
+        </div>
+      </div>
+      <div id="pluginUpdateStatus" style="font-size:11px;color:var(--subtle);line-height:1.5"></div>
+    </div>
   </div>
 
   <div class="drawer-foot">
@@ -1620,6 +1632,20 @@ const I18N = {
     rtkInfoTitle: 'RTK Official Repository',
     rtkInfoDesc: 'Open-source Rust Token Killer (Apache-2.0). Click Install to auto-install for your OS, or download directly:',
     rtkReleasesLink: 'Pre-built Releases ↗',
+    pluginVerTitle: 'Plugin Version & Updates',
+    pluginCheckBtn: 'Check Updates',
+    pluginCheckingBtn: 'Checking…',
+    pluginPrivacyHint: 'On-demand only — zero background network requests.',
+    pluginCheckingHint: 'Checking GitHub releases for updates…',
+    pluginUpToDate: (v) => `You are on the latest version (v${v}).`,
+    pluginUpdateAvail: (cur, latest) => `Update available: v${cur} → v${latest}`,
+    pluginUpdateNowBtn: 'Update Now',
+    pluginUpdatingBtn: 'Updating…',
+    pluginUpdatingHint: 'Pulling latest release from GitHub (git pull --ff-only)…',
+    pluginUpdatedReload: (prev, next) => `Updated v${prev} → v${next}. Reload the plugin or restart Antigravity to apply.`,
+    pluginReleasesLink: 'Open Releases ↗',
+    pluginCheckFail: (msg) => `Update check failed: ${msg}`,
+    pluginUpdateFail: (msg) => `Update failed: ${msg}`,
   },
   zh: {
     langAuto: '自动 (跟随系统)',
@@ -1844,6 +1870,20 @@ const I18N = {
     rtkInfoTitle: 'RTK 官方原仓库',
     rtkInfoDesc: '开源项目 Rust Token Killer (Apache-2.0)。点击「自动安装 RTK」将按当前系统自动安装，也可直达原仓库下载：',
     rtkReleasesLink: '预编译安装包 (Releases) ↗',
+    pluginVerTitle: '插件版本与更新',
+    pluginCheckBtn: '检查更新',
+    pluginCheckingBtn: '检查中…',
+    pluginPrivacyHint: '仅点击检查时连网，平时 0 外联。',
+    pluginCheckingHint: '正在连接 GitHub 查询最新版本…',
+    pluginUpToDate: (v) => `当前已是最新版本 (v${v})。`,
+    pluginUpdateAvail: (cur, latest) => `发现新版本：v${cur} → v${latest}`,
+    pluginUpdateNowBtn: '一键更新',
+    pluginUpdatingBtn: '更新中…',
+    pluginUpdatingHint: '正在拉取最新代码 (git pull --ff-only)…',
+    pluginUpdatedReload: (prev, next) => `已更新 v${prev} → v${next}，请在 Antigravity 中重载插件或重启以生效。`,
+    pluginReleasesLink: '前往 Releases ↗',
+    pluginCheckFail: (msg) => `检查更新失败：${msg}`,
+    pluginUpdateFail: (msg) => `更新失败：${msg}`,
   },
   ja: {
     langAuto: '自動 (システム言語)',
@@ -2068,6 +2108,20 @@ const I18N = {
     rtkInfoTitle: 'RTK 公式リポジトリ',
     rtkInfoDesc: 'オープンソース Rust Token Killer (Apache-2.0)。OS に合わせて自動インストールまたは直接ダウンロードできます：',
     rtkReleasesLink: 'ビルド済み Releases ↗',
+    pluginVerTitle: 'プラグインバージョンと更新',
+    pluginCheckBtn: '更新を確認',
+    pluginCheckingBtn: '確認中…',
+    pluginPrivacyHint: 'クリック時のみ接続・常時バックグラウンド通信ゼロ。',
+    pluginCheckingHint: 'GitHub で最新バージョンを確認中…',
+    pluginUpToDate: (v) => `最新バージョンです (v${v})。`,
+    pluginUpdateAvail: (cur, latest) => `新しいバージョンがあります：v${cur} → v${latest}`,
+    pluginUpdateNowBtn: '今すぐ更新',
+    pluginUpdatingBtn: '更新中…',
+    pluginUpdatingHint: 'GitHub から最新版を取得中 (git pull --ff-only)…',
+    pluginUpdatedReload: (prev, next) => `v${prev} → v${next} に更新しました。反映するにはプラグインを再読み込みしてください。`,
+    pluginReleasesLink: 'Releases を開く ↗',
+    pluginCheckFail: (msg) => `更新確認に失敗しました：${msg}`,
+    pluginUpdateFail: (msg) => `更新に失敗しました：${msg}`,
   },
   fr: {
     langAuto: 'Auto (Système)',
@@ -2292,6 +2346,20 @@ const I18N = {
     rtkInfoTitle: 'Dépôt officiel RTK',
     rtkInfoDesc: 'Projet open source Rust Token Killer (Apache-2.0). Cliquez sur Installer ou téléchargez depuis GitHub :',
     rtkReleasesLink: 'Binaires Releases ↗',
+    pluginVerTitle: 'Version & Mises à jour',
+    pluginCheckBtn: 'Vérifier',
+    pluginCheckingBtn: 'Vérification…',
+    pluginPrivacyHint: 'À la demande uniquement — zéro requête réseau en arrière-plan.',
+    pluginCheckingHint: 'Vérification des versions sur GitHub…',
+    pluginUpToDate: (v) => `Vous utilisez déjà la dernière version (v${v}).`,
+    pluginUpdateAvail: (cur, latest) => `Mise à jour disponible : v${cur} → v${latest}`,
+    pluginUpdateNowBtn: 'Mettre à jour',
+    pluginUpdatingBtn: 'Mise à jour…',
+    pluginUpdatingHint: 'Téléchargement de la mise à jour (git pull --ff-only)…',
+    pluginUpdatedReload: (prev, next) => `Mis à jour v${prev} → v${next}. Rechargez le plugin ou redémarrez Antigravity.`,
+    pluginReleasesLink: 'Voir Releases ↗',
+    pluginCheckFail: (msg) => `Échec de la vérification : ${msg}`,
+    pluginUpdateFail: (msg) => `Échec de la mise à jour : ${msg}`,
   },
   de: {
     langAuto: 'Auto (System)',
@@ -2516,6 +2584,20 @@ const I18N = {
     rtkInfoTitle: 'Offizielles RTK-Repository',
     rtkInfoDesc: 'Open-Source Rust Token Killer (Apache-2.0). Automatisch für Ihr OS installieren oder direkt herunterladen:',
     rtkReleasesLink: 'Vorkompilierte Releases ↗',
+    pluginVerTitle: 'Plugin-Version & Updates',
+    pluginCheckBtn: 'Prüfen',
+    pluginCheckingBtn: 'Prüfe…',
+    pluginPrivacyHint: 'Nur auf Klick — keinerlei Netzwerkaufrufe im Hintergrund.',
+    pluginCheckingHint: 'Prüfe GitHub auf neue Versionen…',
+    pluginUpToDate: (v) => `Sie nutzen die aktuelle Version (v${v}).`,
+    pluginUpdateAvail: (cur, latest) => `Update verfügbar: v${cur} → v${latest}`,
+    pluginUpdateNowBtn: 'Jetzt updaten',
+    pluginUpdatingBtn: 'Aktualisiere…',
+    pluginUpdatingHint: 'Lade neueste Version (git pull --ff-only)…',
+    pluginUpdatedReload: (prev, next) => `Aktualisiert v${prev} → v${next}. Bitte Plugin neu laden oder Antigravity neu starten.`,
+    pluginReleasesLink: 'Zu Releases ↗',
+    pluginCheckFail: (msg) => `Update-Prüfung fehlgeschlagen: ${msg}`,
+    pluginUpdateFail: (msg) => `Update fehlgeschlagen: ${msg}`,
   },
 };
 
@@ -2593,6 +2675,7 @@ function applyI18n() {
     renderAdvice(state.data);
     renderAutoCompact(state.data);
     renderRtkSection(state.data);
+    renderPluginUpdateSection(state.data);
     renderAnalytics(state.data);
     renderTable(state.data);
   }
@@ -3313,6 +3396,132 @@ function renderRtkSection(d) {
   }
 }
 
+/* On-Demand Plugin Version & Updater (Zero Background Network Calls) */
+const pluginUpdateState = {
+  phase: 'idle', // 'idle' | 'checking' | 'uptodate' | 'available' | 'updating' | 'updated' | 'error'
+  result: null,
+  errorMsg: '',
+};
+
+async function triggerPluginCheckUpdate() {
+  if (pluginUpdateState.phase === 'checking' || pluginUpdateState.phase === 'updating') return;
+  pluginUpdateState.phase = 'checking';
+  pluginUpdateState.errorMsg = '';
+  renderPluginUpdateSection(state.data);
+  try {
+    const res = await fetch('./api/plugin/check-update', { method: 'POST' });
+    let data = {};
+    try { data = await res.json(); } catch {}
+    if (data && data.ok) {
+      pluginUpdateState.result = data;
+      pluginUpdateState.phase = data.hasUpdate ? 'available' : 'uptodate';
+    } else {
+      pluginUpdateState.result = data || null;
+      pluginUpdateState.phase = 'error';
+      pluginUpdateState.errorMsg = T().pluginCheckFail(data?.message || `HTTP ${res.status}`);
+    }
+  } catch (err) {
+    pluginUpdateState.phase = 'error';
+    pluginUpdateState.errorMsg = T().pluginCheckFail(String(err?.message || err || 'Network error'));
+  }
+  renderPluginUpdateSection(state.data);
+}
+
+async function triggerPluginApplyUpdate() {
+  if (pluginUpdateState.phase === 'updating') return;
+  pluginUpdateState.phase = 'updating';
+  pluginUpdateState.errorMsg = '';
+  renderPluginUpdateSection(state.data);
+  try {
+    const res = await fetch('./api/plugin/apply-update', { method: 'POST' });
+    let data = {};
+    try { data = await res.json(); } catch {}
+    if (data && data.ok) {
+      pluginUpdateState.result = data;
+      pluginUpdateState.phase = 'updated';
+      showUiToast(T().pluginUpdatedReload(data.previousVersion || '-', data.newVersion || '-'));
+      setTimeout(() => fetchData(), 400);
+    } else {
+      pluginUpdateState.result = data || pluginUpdateState.result;
+      pluginUpdateState.phase = 'error';
+      pluginUpdateState.errorMsg = T().pluginUpdateFail(data?.message || `HTTP ${res.status}`);
+    }
+  } catch (err) {
+    pluginUpdateState.phase = 'error';
+    pluginUpdateState.errorMsg = T().pluginUpdateFail(String(err?.message || err || 'Network error'));
+  }
+  renderPluginUpdateSection(state.data);
+}
+
+function renderPluginUpdateSection(d) {
+  const dict = T();
+  const info = d?.pluginInfo || {};
+  const verPill = document.getElementById('pluginVerPill');
+  const checkBtn = document.getElementById('pluginCheckUpdateBtn');
+  const statusEl = document.getElementById('pluginUpdateStatus');
+  if (!verPill || !checkBtn || !statusEl) return;
+
+  const curVer = info.version || pluginUpdateState.result?.currentVersion || '-';
+  const isGitRepo = info.isGitRepo !== undefined ? Boolean(info.isGitRepo) : Boolean(pluginUpdateState.result?.isGitRepo);
+  const releasesUrl = info.releasesUrl || pluginUpdateState.result?.releasesUrl || 'https://github.com/FableFatale/antigravity-context-monitor/releases';
+
+  verPill.textContent = curVer === '-' ? 'v-' : `v${curVer}`;
+  if (pluginUpdateState.phase === 'available') {
+    verPill.className = 'status-badge warn';
+  } else if (pluginUpdateState.phase === 'uptodate' || pluginUpdateState.phase === 'updated') {
+    verPill.className = 'status-badge active';
+  } else {
+    verPill.className = 'status-badge';
+  }
+
+  const busy = pluginUpdateState.phase === 'checking' || pluginUpdateState.phase === 'updating';
+  checkBtn.disabled = busy;
+  checkBtn.textContent = pluginUpdateState.phase === 'checking' ? dict.pluginCheckingBtn : dict.pluginCheckBtn;
+
+  if (pluginUpdateState.phase === 'idle') {
+    statusEl.innerHTML = `<span>${escHtml(dict.pluginPrivacyHint)}</span>`;
+  } else if (pluginUpdateState.phase === 'checking') {
+    statusEl.innerHTML = `<span style="color:var(--indigo);font-weight:500">${escHtml(dict.pluginCheckingHint)}</span>`;
+  } else if (pluginUpdateState.phase === 'uptodate') {
+    const v = pluginUpdateState.result?.currentVersion || curVer;
+    statusEl.innerHTML = `<span style="color:var(--emerald);font-weight:500">${escHtml(dict.pluginUpToDate(v))}</span>`;
+  } else if (pluginUpdateState.phase === 'available') {
+    const prev = pluginUpdateState.result?.currentVersion || curVer;
+    const latest = pluginUpdateState.result?.latestVersion || '';
+    const actionHtml = isGitRepo
+      ? `<button type="button" id="pluginApplyUpdateBtn" class="btn btn-primary btn-xs">${escHtml(dict.pluginUpdateNowBtn)}</button>`
+      : `<a class="rtk-repo-link" href="${escHtml(releasesUrl)}" target="_blank" rel="noopener noreferrer">${escHtml(dict.pluginReleasesLink)}</a>`;
+    statusEl.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <span style="color:var(--amber);font-weight:600">${escHtml(dict.pluginUpdateAvail(prev, latest))}</span>
+        ${actionHtml}
+      </div>
+    `;
+    const applyBtn = statusEl.querySelector('#pluginApplyUpdateBtn');
+    if (applyBtn) applyBtn.onclick = triggerPluginApplyUpdate;
+  } else if (pluginUpdateState.phase === 'updating') {
+    statusEl.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <span style="color:var(--indigo);font-weight:500">${escHtml(dict.pluginUpdatingHint)}</span>
+        <button type="button" class="btn btn-primary btn-xs" disabled>${escHtml(dict.pluginUpdatingBtn)}</button>
+      </div>
+    `;
+  } else if (pluginUpdateState.phase === 'updated') {
+    const prev = pluginUpdateState.result?.previousVersion || curVer;
+    const next = pluginUpdateState.result?.newVersion || curVer;
+    statusEl.innerHTML = `<span style="color:var(--emerald);font-weight:600">${escHtml(dict.pluginUpdatedReload(prev, next))}</span>`;
+  } else if (pluginUpdateState.phase === 'error') {
+    statusEl.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span style="color:var(--red)">${escHtml(pluginUpdateState.errorMsg)}</span>
+        <a class="rtk-repo-link" href="${escHtml(releasesUrl)}" target="_blank" rel="noopener noreferrer">${escHtml(dict.pluginReleasesLink)}</a>
+      </div>
+    `;
+  }
+}
+
+document.getElementById('pluginCheckUpdateBtn').onclick = triggerPluginCheckUpdate;
+
 /* Unified Usage Analytics */
 function renderMainChart(d) {
   const dict = T();
@@ -3813,6 +4022,7 @@ async function fetchData() {
     renderAdvice(d);
     renderAutoCompact(d);
     renderRtkSection(d);
+    renderPluginUpdateSection(d);
     renderAnalytics(d);
     renderTable(d);
   } catch (err) {

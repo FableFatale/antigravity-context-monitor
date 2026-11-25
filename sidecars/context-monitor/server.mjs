@@ -7,6 +7,10 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const PLUGIN_ROOT = resolve(__dirname, '..', '..');
+const PLUGIN_REPO_URL = 'https://github.com/FableFatale/antigravity-context-monitor';
+const PLUGIN_RELEASES_URL = `${PLUGIN_REPO_URL}/releases`;
+const PLUGIN_TAGS_API = 'https://api.github.com/repos/FableFatale/antigravity-context-monitor/tags?per_page=10';
 const PORT = Number(process.env.ANTIGRAVITY_SIDECAR_WEB_PORT) || 0;
 const APP_DATA = process.env.ANTIGRAVITY_APP_DATA_DIR || join(homedir(), '.gemini', 'antigravity');
 const BRAIN_DIR = join(APP_DATA, 'brain');
@@ -1605,11 +1609,206 @@ function getRtkStatsSnapshot(targetDay = '') {
 // Kick off initial non-blocking RTK probe on startup
 refreshRtkStatsAsync();
 
+function getPluginInfo() {
+  let version = '0.0.0';
+  try {
+    const manifest = JSON.parse(readFileSync(join(PLUGIN_ROOT, 'plugin.json'), 'utf-8'));
+    if (manifest && typeof manifest.version === 'string' && manifest.version.trim()) {
+      version = manifest.version.trim();
+    }
+  } catch {}
+  const isGitRepo = existsSync(join(PLUGIN_ROOT, '.git'));
+  return {
+    version,
+    isGitRepo,
+    repoUrl: PLUGIN_REPO_URL,
+    releasesUrl: PLUGIN_RELEASES_URL,
+  };
+}
+
+function parseSemver(raw) {
+  const m = String(raw || '').trim().match(/^v?(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/i);
+  if (!m) return null;
+  return [Number(m[1]), Number(m[2]), Number(m[3])];
+}
+
+function compareSemver(a, b) {
+  const pa = parseSemver(a);
+  const pb = parseSemver(b);
+  if (!pa || !pb) return 0;
+  for (let i = 0; i < 3; i++) {
+    if (pa[i] !== pb[i]) return pa[i] > pb[i] ? 1 : -1;
+  }
+  return 0;
+}
+
+let pluginUpdateInFlight = false;
+
+export async function checkPluginUpdate() {
+  const info = getPluginInfo();
+  const checkedAt = Date.now();
+  try {
+    const res = await fetch(PLUGIN_TAGS_API, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'antigravity-context-monitor',
+        Accept: 'application/vnd.github+json',
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) {
+      return {
+        ok: false,
+        currentVersion: info.version,
+        isGitRepo: info.isGitRepo,
+        releasesUrl: info.releasesUrl,
+        checkedAt,
+        message: `GitHub API returned HTTP ${res.status}`,
+      };
+    }
+    const tags = await res.json();
+    let latestVersion = info.version;
+    let foundValidTag = false;
+    if (Array.isArray(tags)) {
+      for (const item of tags) {
+        const parsed = parseSemver(item?.name);
+        if (!parsed) continue;
+        const normalized = `${parsed[0]}.${parsed[1]}.${parsed[2]}`;
+        if (!foundValidTag || compareSemver(normalized, latestVersion) > 0) {
+          latestVersion = normalized;
+          foundValidTag = true;
+        }
+      }
+    }
+    const hasUpdate = foundValidTag && compareSemver(latestVersion, info.version) > 0;
+    return {
+      ok: true,
+      currentVersion: info.version,
+      latestVersion,
+      hasUpdate,
+      isGitRepo: info.isGitRepo,
+      releasesUrl: info.releasesUrl,
+      checkedAt,
+      message: hasUpdate
+        ? `Update available: v${info.version} → v${latestVersion}`
+        : `Already up to date (v${info.version})`,
+    };
+  } catch (err) {
+    const isTimeout = err && (err.name === 'TimeoutError' || err.name === 'AbortError');
+    return {
+      ok: false,
+      currentVersion: info.version,
+      isGitRepo: info.isGitRepo,
+      releasesUrl: info.releasesUrl,
+      checkedAt,
+      message: isTimeout
+        ? 'GitHub request timed out (8s)'
+        : String(err?.message || err || 'Network error').slice(0, 200),
+    };
+  }
+}
+
+export async function applyPluginUpdate() {
+  if (pluginUpdateInFlight) {
+    const info = getPluginInfo();
+    return {
+      ok: false,
+      inFlight: true,
+      isGitRepo: info.isGitRepo,
+      releasesUrl: info.releasesUrl,
+      message: 'Plugin update is already in progress.',
+    };
+  }
+  const info = getPluginInfo();
+  if (!info.isGitRepo) {
+    return {
+      ok: false,
+      isGitRepo: false,
+      releasesUrl: info.releasesUrl,
+      message: 'Manual/ZIP install detected — download the latest release from GitHub.',
+    };
+  }
+
+  pluginUpdateInFlight = true;
+  try {
+    const previousVersion = info.version;
+    const mcpDir = join(PLUGIN_ROOT, 'mcp');
+    const mcpPkgPath = join(mcpDir, 'package.json');
+    const beforePkg = existsSync(mcpPkgPath) ? readFileSync(mcpPkgPath, 'utf-8') : '';
+
+    const pullRes = await execFileAsync(
+      'git',
+      ['-C', PLUGIN_ROOT, 'pull', '--ff-only', 'origin', 'main'],
+      { timeout: 45000 }
+    );
+    if (!pullRes.ok) {
+      const errSnippet = (pullRes.stderr || pullRes.stdout || pullRes.error || 'git pull failed')
+        .trim()
+        .split(/\r?\n/)
+        .filter(Boolean)
+        .slice(-3)
+        .join(' ')
+        .slice(0, 220);
+      return {
+        ok: false,
+        previousVersion,
+        isGitRepo: true,
+        releasesUrl: info.releasesUrl,
+        message: errSnippet || 'git pull --ff-only origin main failed',
+      };
+    }
+
+    const afterPkg = existsSync(mcpPkgPath) ? readFileSync(mcpPkgPath, 'utf-8') : '';
+    const needNpmInstall = afterPkg !== beforePkg || !existsSync(join(mcpDir, 'node_modules'));
+    let npmInstalled = false;
+    if (needNpmInstall && existsSync(mcpPkgPath)) {
+      const isWin = process.platform === 'win32';
+      const npmRes = isWin
+        ? await execFileAsync('cmd.exe', ['/c', 'npm.cmd', 'install', '--omit=dev'], { cwd: mcpDir, timeout: 120000 })
+        : await execFileAsync('npm', ['install', '--omit=dev'], { cwd: mcpDir, timeout: 120000 });
+      if (!npmRes.ok) {
+        const npmErr = (npmRes.stderr || npmRes.stdout || npmRes.error || 'npm install failed')
+          .trim()
+          .split(/\r?\n/)
+          .filter(Boolean)
+          .slice(-2)
+          .join(' ')
+          .slice(0, 200);
+        return {
+          ok: false,
+          previousVersion,
+          newVersion: getPluginInfo().version,
+          npmInstalled: false,
+          isGitRepo: true,
+          releasesUrl: info.releasesUrl,
+          message: `git pull succeeded, but MCP npm install failed: ${npmErr}`,
+        };
+      }
+      npmInstalled = true;
+    }
+
+    const newVersion = getPluginInfo().version;
+    return {
+      ok: true,
+      previousVersion,
+      newVersion,
+      npmInstalled,
+      needsReload: true,
+      message: newVersion !== previousVersion
+        ? `Updated v${previousVersion} → v${newVersion}${npmInstalled ? ' (MCP deps updated)' : ''}. Reload plugin to apply.`
+        : `Already up to date (v${newVersion})${npmInstalled ? ' (MCP deps refreshed)' : ''}.`,
+    };
+  } finally {
+    pluginUpdateInFlight = false;
+  }
+}
+
 export function getFullOverview({ id = 'all', day = '', model = 'all', hour = '' } = {}) {
   const data = buildOverview(id, day, model, hour);
   const acStatus = getAutoCompactStatus();
   data.autoCompact = acStatus;
   data.rtkStats = getRtkStatsSnapshot(data.targetDay);
+  data.pluginInfo = getPluginInfo();
   if (data.latestWatermark && acStatus.thresholdTokens) {
     data.latestWatermark.threshold = acStatus.thresholdTokens;
     data.latestWatermark.pct = Math.min(100, Math.round((data.latestWatermark.contextTokens / acStatus.thresholdTokens) * 100));
@@ -1738,6 +1937,20 @@ const server = createServer(async (req, res) => {
 
   if (url.pathname === '/api/rtk/install' && req.method === 'POST') {
     const result = await installRtkCli();
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify(result));
+    return;
+  }
+
+  if (url.pathname === '/api/plugin/check-update' && req.method === 'POST') {
+    const result = await checkPluginUpdate();
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify(result));
+    return;
+  }
+
+  if (url.pathname === '/api/plugin/apply-update' && req.method === 'POST') {
+    const result = await applyPluginUpdate();
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(result));
     return;

@@ -6,24 +6,38 @@ This file follows the llms.txt convention and is written for AI agents (Antigrav
 
 ## Quick Install (Agent Executable Steps)
 
-1. Clone this repository into Antigravity's plugin directory named `context-monitor`:
+1. Install this repository into Antigravity's plugin directory named `context-monitor` (either via `agy` CLI or `git clone`):
+   - Antigravity CLI: `agy plugin install https://github.com/FableFatale/antigravity-context-monitor`
    - Windows (PowerShell): `git clone https://github.com/FableFatale/antigravity-context-monitor.git "$env:USERPROFILE\.gemini\config\plugins\context-monitor"`
    - macOS / Linux: `git clone https://github.com/FableFatale/antigravity-context-monitor.git ~/.gemini/config/plugins/context-monitor`
-2. Install MCP App dependencies:
-   - `cd <plugin_dir>/mcp && npm install`
+2. Install MCP App dependencies (required if `<plugin_dir>/mcp/node_modules` is absent):
+   - `cd <plugin_dir>/mcp && npm install --omit=dev`
 3. Enable `context-monitor` in Antigravity Customizations / Plugins (do NOT hand-edit `~/.gemini/config/config.json`).
 4. Verify:
    - Sidecar syntax: `node --check sidecars/context-monitor/server.mjs`
    - Hook syntax: `node --check hooks/context-guard.mjs`
    - MCP App syntax: `node --check mcp/server.mjs`
+   - Optional CLI validation (if `agy` is installed): `agy plugin validate <plugin_dir>`
+
+## Updating (Agent Executable Steps)
+
+User configuration in `<ANTIGRAVITY_DATA_DIR>/plugin_data/context-monitor/` is stored outside the plugin directory and is preserved across updates.
+
+1. Pull the latest release fast-forward:
+   - Windows (PowerShell): `git -C "$env:USERPROFILE\.gemini\config\plugins\context-monitor" pull --ff-only origin main`
+   - macOS / Linux: `git -C ~/.gemini/config/plugins/context-monitor pull --ff-only origin main`
+2. If `mcp/package.json` changed or `mcp/node_modules` is missing, refresh MCP dependencies:
+   - `cd <plugin_dir>/mcp && npm install --omit=dev`
+3. Reload the plugin in Antigravity Customizations / Plugins (or restart Antigravity).
+   - Users can also trigger this on-demand from the dashboard UI (**Settings → Plugin Version & Updates → Check Updates → Update Now**).
 
 ## Repository Map
 
-- [plugin.json](plugin.json): Antigravity plugin manifest (`name`, `displayName`, `version`, `logo`, `suggestedPrompts`).
+- [plugin.json](plugin.json): Antigravity plugin manifest (`name`, `displayName`, `version`, `description`, `logo`, `author`, `homepage`, `repository`, `suggestedPrompts`).
 - [mcp_config.json](mcp_config.json): Registers the `context-monitor` MCP App server (`node ${PLUGIN_ROOT}/mcp/server.mjs`).
 - [hooks.json](hooks.json): Registers the `PreInvocation` lifecycle hook (`node hooks/context-guard.mjs`).
 - [sidecars/context-monitor/sidecar.json](sidecars/context-monitor/sidecar.json): Managed Antigravity Sidecar declaration (`restart_policy: "always"`, `AUX_PANE` web UI).
-- [sidecars/context-monitor/server.mjs](sidecars/context-monitor/server.mjs): Core zero-dependency Node.js engine. Read-only parser for local Antigravity transcripts & SQLite conversation metadata, per-model dynamic threshold recommender, HTTP API server (when executed directly), and exported functions (when imported by `mcp/server.mjs`).
+- [sidecars/context-monitor/server.mjs](sidecars/context-monitor/server.mjs): Core zero-dependency Node.js engine. Read-only parser for local Antigravity transcripts & SQLite conversation metadata, per-model dynamic threshold recommender, dynamic Idle TTL Guard, optional 1-click RTK CLI installer, on-demand GitHub updater, HTTP API server (when executed directly), and exported functions (when imported by `mcp/server.mjs`).
 - [sidecars/context-monitor/index.html](sidecars/context-monitor/index.html): Single-file dashboard UI (zero frontend frameworks, custom Palermo light controls, zero native `<select>` elements, slide-over settings drawer, responsive 24h & 53-week heatmap).
 - [mcp/server.mjs](mcp/server.mjs): Official Antigravity MCP App server exposing `ui://context-monitor/app.html` (`global` left-sidebar full-page + `aux_pane` right-pane entrypoints) and app-only RPC tools bridging `window.fetch('./api/...')` calls.
 - [hooks/context-guard.mjs](hooks/context-guard.mjs): `PreInvocation` hook sharing `auto-compact.json`, bypassing `/compact`, performing 3-layer context lifecycle management: (1) Soft-warning subagent offloading (`70%–99%` threshold -> guides `invoke_subagent`), (2) Post-`CHECKPOINT` deterministic state ledger injection (restores modified/read file manifest & task steps on the first turn after compaction), and (3) Threshold guard (`hook_guard` / `hook_block`) + localized 5-language banners.
@@ -33,14 +47,17 @@ This file follows the llms.txt convention and is written for AI agents (Antigrav
 ## Runtime Data & API Contracts
 
 - Persistent user config path (never committed): `<ANTIGRAVITY_DATA_DIR>/plugin_data/context-monitor/auto-compact.json`.
-- Read-only local data sources: Antigravity local conversation logs & SQLite metadata (`conversations/*.db`). Zero outbound telemetry.
+- Read-only local data sources: Antigravity local conversation logs & SQLite metadata (`conversations/*.db`). Zero telemetry and zero background network calls (GitHub tag check runs only on explicit `POST ./api/plugin/check-update`).
 - HTTP / MCP App bridged endpoints:
-  - `GET ./api/overview?id=<convId|all>&day=<YYYY-MM-DD>&model=<model|all>&hour=<0-23>`
+  - `GET ./api/overview?id=<convId|all>&day=<YYYY-MM-DD>&model=<model|all>&hour=<0-23>` (includes `pluginInfo: { version, isGitRepo, repoUrl, releasesUrl }`, `rtkStats`, `autoCompact`, `thresholdAdvice`)
   - `GET ./api/auto-compact`
-  - `POST ./api/auto-compact` (`{ enabled, thresholdMode: 'auto'|'manual_next'|'manual_fixed', thresholdK, mode: 'toast_confirm'|'ui_send'|'hook_guard'|'hook_block'|'notify', idleSeconds, cooldownSeconds }`)
+  - `POST ./api/auto-compact` (`{ enabled, thresholdMode: 'auto'|'manual_next'|'manual_fixed', thresholdK, mode: 'toast_confirm'|'ui_send'|'hook_guard'|'hook_block'|'notify', idleSeconds, cooldownSeconds, subagentOffload, postCompactLedger, idleGuardEnabled, idleGuardMode, idleGuardMinK, idleGuardResetMin, idleGuardMaxPerHour, rtkPath }`)
   - `POST ./api/auto-compact/trigger-now`
   - `POST ./api/auto-compact/snooze` (`{ bumpK?: number }`)
   - `POST ./api/auto-compact/test`
+  - `POST ./api/rtk/install` (app tool: `install_rtk` — on-demand OS-native RTK CLI auto-install via `winget` / `brew` / `install.sh` / `cargo`)
+  - `POST ./api/plugin/check-update` (app tool: `check_plugin_update` — on-demand GitHub tags check, 8s timeout, zero background polling)
+  - `POST ./api/plugin/apply-update` (app tool: `apply_plugin_update` — on-demand `git pull --ff-only origin main` + conditional `mcp/` `npm install --omit=dev`)
 
 ## Platform Capabilities
 

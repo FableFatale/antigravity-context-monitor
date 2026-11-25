@@ -17,6 +17,8 @@ import {
   snoozeAutoCompact,
   evaluateAutoCompact,
   installRtkCli,
+  checkPluginUpdate,
+  applyPluginUpdate,
   getIndexHtml,
 } from '../sidecars/context-monitor/server.mjs';
 
@@ -79,7 +81,7 @@ const __App = ${AppId};
 const __applyTheme = ${applyThemeId || '(() => {})'};
 const __applyVars = ${applyVarsId || '(() => {})'};
 
-const app = new __App({ name: 'Context & Cache Monitor', version: '1.3.0' }, {});
+const app = new __App({ name: 'Context & Cache Monitor', version: '1.8.0' }, {});
 
 const applyCtx = (ctx) => {
   if (!ctx) return;
@@ -152,6 +154,12 @@ async function mcpFetch(urlStr, opts) {
   if (url.pathname.endsWith('/api/rtk/install') && method === 'POST') {
     return makeJsonResponse(await callAppTool('install_rtk', {}));
   }
+  if (url.pathname.endsWith('/api/plugin/check-update') && method === 'POST') {
+    return makeJsonResponse(await callAppTool('check_plugin_update', {}));
+  }
+  if (url.pathname.endsWith('/api/plugin/apply-update') && method === 'POST') {
+    return makeJsonResponse(await callAppTool('apply_plugin_update', {}));
+  }
   return { ok: false, status: 404, async json() { return {}; }, async text() { return 'Not found'; } };
 }
 
@@ -169,7 +177,7 @@ ensureConnected()
 }
 
 const server = new Server(
-  { name: 'context-monitor', version: '1.3.0' },
+  { name: 'context-monitor', version: '1.8.0' },
   {
     capabilities: {
       tools: {},
@@ -315,6 +323,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       inputSchema: { type: 'object', properties: {} },
       _meta: { ui: { visibility: ['app'] } },
     },
+    {
+      name: 'check_plugin_update',
+      title: 'Check Plugin Update',
+      description: 'App-only on-demand tool to check GitHub tags for a newer plugin release.',
+      inputSchema: { type: 'object', properties: {} },
+      _meta: { ui: { visibility: ['app'] } },
+    },
+    {
+      name: 'apply_plugin_update',
+      title: 'Apply Plugin Update',
+      description: 'App-only on-demand tool to fast-forward pull the latest plugin update from GitHub.',
+      inputSchema: { type: 'object', properties: {} },
+      _meta: { ui: { visibility: ['app'] } },
+    },
   ],
 }));
 
@@ -379,6 +401,22 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
 
   if (name === 'install_rtk') {
     const result = await installRtkCli();
+    return {
+      content: [{ type: 'text', text: result.message || 'ok' }],
+      structuredContent: result,
+    };
+  }
+
+  if (name === 'check_plugin_update') {
+    const result = await checkPluginUpdate();
+    return {
+      content: [{ type: 'text', text: result.message || 'ok' }],
+      structuredContent: result,
+    };
+  }
+
+  if (name === 'apply_plugin_update') {
+    const result = await applyPluginUpdate();
     return {
       content: [{ type: 'text', text: result.message || 'ok' }],
       structuredContent: result,
