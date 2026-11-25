@@ -1194,10 +1194,103 @@ function getIndexHtml() {
   return cachedHtml;
 }
 
+const RTK_PLUGIN_PATH = join(homedir(), '.gemini', 'config', 'plugins', 'rtk', 'plugin.json');
+const RTK_CACHE_TTL_MS = 30 * 1000;
+const RTK_MISS_TTL_MS = 60 * 1000;
+const rtkCache = {
+  checkedAt: 0,
+  inFlight: false,
+  installed: false,
+  pluginInstalled: false,
+  summary: null,
+  daily: {},
+  lastUpdatedAt: 0,
+};
+
+function refreshRtkStatsAsync() {
+  const now = Date.now();
+  const ttl = rtkCache.installed ? RTK_CACHE_TTL_MS : RTK_MISS_TTL_MS;
+  if (rtkCache.inFlight || (rtkCache.checkedAt > 0 && now - rtkCache.checkedAt < ttl)) return;
+  rtkCache.inFlight = true;
+  rtkCache.pluginInstalled = existsSync(RTK_PLUGIN_PATH);
+  execFile(
+    'rtk',
+    ['gain', '--daily', '--format', 'json'],
+    { timeout: 2500, encoding: 'utf8', windowsHide: true },
+    (err, stdout) => {
+      rtkCache.inFlight = false;
+      rtkCache.checkedAt = Date.now();
+      if (err || !stdout) {
+        rtkCache.installed = false;
+        rtkCache.summary = null;
+        rtkCache.daily = {};
+        return;
+      }
+      try {
+        const parsed = JSON.parse(String(stdout).trim());
+        const s = parsed?.summary;
+        if (!s || typeof s !== 'object') {
+          rtkCache.installed = false;
+          rtkCache.summary = null;
+          rtkCache.daily = {};
+          return;
+        }
+        const dailyMap = {};
+        if (Array.isArray(parsed.daily)) {
+          for (const d of parsed.daily) {
+            if (!d?.date) continue;
+            dailyMap[d.date] = {
+              date: d.date,
+              commands: Number(d.commands) || 0,
+              inputTokens: Number(d.input_tokens) || 0,
+              outputTokens: Number(d.output_tokens) || 0,
+              savedTokens: Number(d.saved_tokens) || 0,
+              savingsPct: Number((Number(d.savings_pct) || 0).toFixed(1)),
+            };
+          }
+        }
+        rtkCache.installed = true;
+        rtkCache.summary = {
+          totalCommands: Number(s.total_commands) || 0,
+          totalInput: Number(s.total_input) || 0,
+          totalOutput: Number(s.total_output) || 0,
+          totalSaved: Number(s.total_saved) || 0,
+          avgSavingsPct: Number((Number(s.avg_savings_pct) || 0).toFixed(1)),
+        };
+        rtkCache.daily = dailyMap;
+        rtkCache.lastUpdatedAt = Date.now();
+      } catch {
+        rtkCache.installed = false;
+        rtkCache.summary = null;
+        rtkCache.daily = {};
+      }
+    }
+  );
+}
+
+function getRtkStatsSnapshot(targetDay = '') {
+  refreshRtkStatsAsync();
+  const dayEntry = targetDay && rtkCache.daily[targetDay] ? rtkCache.daily[targetDay] : null;
+  const recentDays = Object.values(rtkCache.daily).slice(-7);
+  return {
+    installed: rtkCache.installed,
+    pluginInstalled: rtkCache.pluginInstalled,
+    checked: rtkCache.checkedAt > 0,
+    summary: rtkCache.summary,
+    day: dayEntry,
+    recentDays,
+    lastUpdatedAt: rtkCache.lastUpdatedAt,
+  };
+}
+
+// Kick off initial non-blocking RTK probe on startup
+refreshRtkStatsAsync();
+
 export function getFullOverview({ id = 'all', day = '', model = 'all', hour = '' } = {}) {
   const data = buildOverview(id, day, model, hour);
   const acStatus = getAutoCompactStatus();
   data.autoCompact = acStatus;
+  data.rtkStats = getRtkStatsSnapshot(data.targetDay);
   if (data.latestWatermark && acStatus.thresholdTokens) {
     data.latestWatermark.threshold = acStatus.thresholdTokens;
     data.latestWatermark.pct = Math.min(100, Math.round((data.latestWatermark.contextTokens / acStatus.thresholdTokens) * 100));

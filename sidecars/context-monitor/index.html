@@ -816,6 +816,35 @@
   .ref-lbl { font-size: 11px; color: var(--muted); }
   .ref-val { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
 
+  .status-badge.rtk-pill {
+    background: rgba(5, 150, 105, 0.1);
+    color: var(--emerald);
+    border: 1px solid rgba(5, 150, 105, 0.22);
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+    transition: background .12s;
+  }
+  .status-badge.rtk-pill:hover { background: rgba(5, 150, 105, 0.16); }
+  .rtk-cmd-list { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
+  .rtk-cmd-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 5px 8px;
+  }
+  .rtk-cmd-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   /* Floating Toast & Micro Toast */
   .ui-toast {
     position: fixed;
@@ -843,6 +872,7 @@
       <span class="live-dot" id="liveDot"></span>
       <span class="brand-title">Context &amp; Cache</span>
       <span class="status-badge" id="lastActiveBadge" data-i18n="loading">加载中…</span>
+      <button type="button" class="status-badge rtk-pill" id="rtkTopBadge" style="display:none" title="RTK Output Condenser"></button>
       <div class="filter-chips" id="filterChips"></div>
     </div>
 
@@ -1213,6 +1243,9 @@
       <div id="acLastResult" style="font-size:11px;color:var(--subtle)"></div>
     </div>
 
+    <!-- RTK Output Condenser Companion (Auto-Linked or Pure-Node Fallback) -->
+    <div class="drawer-section" id="rtkDrawerSection"></div>
+
     <!-- Recent Trigger History -->
     <div class="drawer-section" id="acHistoryBox" style="display:none"></div>
   </div>
@@ -1454,6 +1487,19 @@ const I18N = {
     toastCopied: 'Copied /compact',
     chartNoDataDay: (day) => `No requests on ${day} for this filter`,
     chartJumpLatest: (day) => `Jump to latest active day (${day}) →`,
+    rtkTopPill: (saved, pct) => `⚡ RTK -${saved} (${pct}%)`,
+    rtkSecTitle: 'RTK Output Condenser',
+    rtkLinked: 'Linked',
+    rtkFallbackBadge: 'Pure-Node Fallback',
+    rtkTotalSaved: 'Total Saved',
+    rtkAvgPct: 'Avg Savings',
+    rtkCmdCount: 'Commands',
+    rtkDaySummary: (day, cmds, saved, pct) => `${day}: ${cmds} cmds · Saved ${saved} (${pct}%)`,
+    rtkDayNone: (day) => `${day}: no condensed shell commands yet`,
+    rtkLinkedHint: 'PreInvocation hook auto-cooperates with RTK at ≥70% context and avoids unnecessary rtk bypass.',
+    rtkFallbackDesc: 'RTK CLI not detected — built-in pure-Node output-budget rules are active at ≥70% context. Install optional RTK to condense shell output by 20%–60% at the source:',
+    rtkCopyBtn: 'Copy',
+    rtkCopied: (cmd) => `Copied: ${cmd}`,
   },
   zh: {
     langAuto: '🌐 自动 (跟随系统)',
@@ -1641,6 +1687,19 @@ const I18N = {
     toastCopied: '已复制 /compact',
     chartNoDataDay: (day) => `${day} 当天在该筛选条件下暂无请求`,
     chartJumpLatest: (day) => `点击跳转到最近活跃日 (${day}) →`,
+    rtkTopPill: (saved, pct) => `⚡ RTK 省 ${saved} (${pct}%)`,
+    rtkSecTitle: 'RTK 命令输出压缩',
+    rtkLinked: '已联动',
+    rtkFallbackBadge: '纯 Node 兜底中',
+    rtkTotalSaved: '累计节省',
+    rtkAvgPct: '平均压缩率',
+    rtkCmdCount: '已压缩命令',
+    rtkDaySummary: (day, cmds, saved, pct) => `${day} 当日：${cmds} 次命令 · 节省 ${saved} (${pct}%)`,
+    rtkDayNone: (day) => `${day} 当日暂无 RTK 压缩命令记录`,
+    rtkLinkedHint: '已自动联动：上下文 ≥70% 时 PreInvocation 钩子会协同 RTK，提醒 Agent 避免不必要的 rtk bypass。',
+    rtkFallbackDesc: '未检测到 RTK CLI —— 已自动启用内置纯 Node 命令输出控量规则（≥70% 生效）。可选安装 RTK，从源头再省 20%–60% 终端输出 Token：',
+    rtkCopyBtn: '复制',
+    rtkCopied: (cmd) => `已复制：${cmd}`,
   },
   ja: {
     langAuto: '🌐 自動 (システム言語)',
@@ -1828,6 +1887,19 @@ const I18N = {
     toastCopied: '/compact をコピーしました',
     chartNoDataDay: (day) => `${day} はこの条件でのリクエストがありません`,
     chartJumpLatest: (day) => `直近のアクティブ日 (${day}) へ移動 →`,
+    rtkTopPill: (saved, pct) => `⚡ RTK -${saved} (${pct}%)`,
+    rtkSecTitle: 'RTK コマンド出力圧縮',
+    rtkLinked: '連携済み',
+    rtkFallbackBadge: 'Node フォールバック中',
+    rtkTotalSaved: '累計削減',
+    rtkAvgPct: '平均削減率',
+    rtkCmdCount: '圧縮コマンド',
+    rtkDaySummary: (day, cmds, saved, pct) => `${day}：${cmds} 回 · ${saved} 削減 (${pct}%)`,
+    rtkDayNone: (day) => `${day} は圧縮コマンド記録なし`,
+    rtkLinkedHint: '自動連携中：コンテキスト ≥70% で PreInvocation Hook が不要な rtk bypass を抑制します。',
+    rtkFallbackDesc: 'RTK CLI 未検出 — ≥70% で内蔵 Node 出力予算ルールが自動動作します。任意で RTK を導入するとシェル出力を 20%–60% 削減できます：',
+    rtkCopyBtn: 'コピー',
+    rtkCopied: (cmd) => `コピーしました: ${cmd}`,
   },
   fr: {
     langAuto: '🌐 Auto (Système)',
@@ -2015,6 +2087,19 @@ const I18N = {
     toastCopied: '/compact copié',
     chartNoDataDay: (day) => `Aucune requête le ${day} pour ce filtre`,
     chartJumpLatest: (day) => `Aller au dernier jour actif (${day}) →`,
+    rtkTopPill: (saved, pct) => `⚡ RTK -${saved} (${pct}%)`,
+    rtkSecTitle: 'Compresseur de sortie RTK',
+    rtkLinked: 'Connecté',
+    rtkFallbackBadge: 'Repli Node actif',
+    rtkTotalSaved: 'Économisés',
+    rtkAvgPct: 'Gain moyen',
+    rtkCmdCount: 'Commandes',
+    rtkDaySummary: (day, cmds, saved, pct) => `${day} : ${cmds} cmd · -${saved} (${pct}%)`,
+    rtkDayNone: (day) => `${day} : aucune commande compressée`,
+    rtkLinkedHint: 'Coopération active : à ≥70% de contexte, le hook PreInvocation évite les rtk bypass inutiles.',
+    rtkFallbackDesc: 'RTK CLI non détecté — les règles intégrées de budget de sortie Node sont actives dès 70%. Installez RTK en option pour réduire les sorties shell de 20% à 60% :',
+    rtkCopyBtn: 'Copier',
+    rtkCopied: (cmd) => `Copié : ${cmd}`,
   },
   de: {
     langAuto: '🌐 Auto (System)',
@@ -2202,6 +2287,19 @@ const I18N = {
     toastCopied: '/compact kopiert',
     chartNoDataDay: (day) => `Keine Anfragen am ${day} für diesen Filter`,
     chartJumpLatest: (day) => `Zum letzten aktiven Tag (${day}) springen →`,
+    rtkTopPill: (saved, pct) => `⚡ RTK -${saved} (${pct}%)`,
+    rtkSecTitle: 'RTK-Ausgabekomprimierung',
+    rtkLinked: 'Verbunden',
+    rtkFallbackBadge: 'Node-Fallback aktiv',
+    rtkTotalSaved: 'Gespart',
+    rtkAvgPct: 'Ø Ersparnis',
+    rtkCmdCount: 'Befehle',
+    rtkDaySummary: (day, cmds, saved, pct) => `${day}: ${cmds} Bef. · -${saved} (${pct}%)`,
+    rtkDayNone: (day) => `${day}: keine komprimierten Befehle`,
+    rtkLinkedHint: 'Aktiv gekoppelt: Ab ≥70% Kontext vermeidet der PreInvocation-Hook unnötiges rtk bypass.',
+    rtkFallbackDesc: 'RTK CLI nicht gefunden — integrierte Node-Ausgaberegeln greifen ab ≥70% Kontext. Optionales RTK spart 20%–60% Shell-Ausgabe direkt an der Quelle:',
+    rtkCopyBtn: 'Kopieren',
+    rtkCopied: (cmd) => `Kopiert: ${cmd}`,
   },
 };
 
@@ -2278,6 +2376,7 @@ function applyI18n() {
     renderKPIs(state.data);
     renderAdvice(state.data);
     renderAutoCompact(state.data);
+    renderRtkSection(state.data);
     renderAnalytics(state.data);
     renderTable(state.data);
   }
@@ -2330,6 +2429,12 @@ function closeDrawer() {
   closeAllCustomSelects(null);
 }
 document.getElementById('openSettingsBtn').onclick = openDrawer;
+document.getElementById('rtkTopBadge').onclick = () => {
+  openDrawer();
+  requestAnimationFrame(() => {
+    document.getElementById('rtkDrawerSection')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+};
 document.getElementById('closeDrawerBtn').onclick = closeDrawer;
 document.getElementById('cancelDrawerBtn').onclick = closeDrawer;
 drawerBackdrop.onclick = closeDrawer;
@@ -2797,6 +2902,77 @@ function renderAutoCompact(d) {
     }).join('');
   } else {
     histBox.style.display = 'none';
+  }
+}
+
+/* RTK Output Condenser Telemetry & Optional Install Companion */
+function renderRtkSection(d) {
+  const dict = T();
+  const rtk = d.rtkStats || {};
+  const topPill = document.getElementById('rtkTopBadge');
+  const box = document.getElementById('rtkDrawerSection');
+  if (!box) return;
+
+  if (rtk.installed && rtk.summary) {
+    const s = rtk.summary;
+    if (topPill) {
+      topPill.textContent = dict.rtkTopPill(fmtNum(s.totalSaved), s.avgSavingsPct);
+      topPill.style.display = 'inline-flex';
+    }
+    const dayStr = d.targetDay || state.day;
+    const dayLine = rtk.day && rtk.day.commands > 0
+      ? dict.rtkDaySummary(dayStr, rtk.day.commands.toLocaleString(), fmtNum(rtk.day.savedTokens), rtk.day.savingsPct)
+      : dict.rtkDayNone(dayStr);
+
+    box.innerHTML = `
+      <div class="drawer-sec-head">
+        <span>${escHtml(dict.rtkSecTitle)}</span>
+        <span class="status-badge active">${escHtml(dict.rtkLinked)}</span>
+      </div>
+      <div class="ref-grid">
+        <div class="ref-box">
+          <span class="ref-lbl">${escHtml(dict.rtkTotalSaved)}</span>
+          <span class="ref-val" style="color:var(--emerald)">${fmtNum(s.totalSaved)}</span>
+        </div>
+        <div class="ref-box">
+          <span class="ref-lbl">${escHtml(dict.rtkAvgPct)}</span>
+          <span class="ref-val" style="color:var(--indigo)">${s.avgSavingsPct}%</span>
+        </div>
+        <div class="ref-box">
+          <span class="ref-lbl">${escHtml(dict.rtkCmdCount)}</span>
+          <span class="ref-val">${fmtNum(s.totalCommands)}</span>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text);font-variant-numeric:tabular-nums">${escHtml(dayLine)}</div>
+      <div style="font-size:11px;color:var(--subtle);line-height:1.45">${escHtml(dict.rtkLinkedHint)}</div>
+    `;
+  } else {
+    if (topPill) topPill.style.display = 'none';
+    const cmds = ['brew install rtk', 'cargo install rtk'];
+    box.innerHTML = `
+      <div class="drawer-sec-head">
+        <span>${escHtml(dict.rtkSecTitle)}</span>
+        <span class="status-badge">${escHtml(dict.rtkFallbackBadge)}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.5">${escHtml(dict.rtkFallbackDesc)}</div>
+      <div class="rtk-cmd-list">
+        ${cmds.map((c) => `
+          <div class="rtk-cmd-row">
+            <code class="rtk-cmd-code">${escHtml(c)}</code>
+            <button type="button" class="btn btn-xs rtk-copy-cmd" data-cmd="${escHtml(c)}">${escHtml(dict.rtkCopyBtn)}</button>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    box.querySelectorAll('.rtk-copy-cmd').forEach((btn) => {
+      btn.onclick = async () => {
+        const cmd = btn.dataset.cmd || '';
+        try {
+          await navigator.clipboard.writeText(cmd);
+          showUiToast(dict.rtkCopied(cmd));
+        } catch {}
+      };
+    });
   }
 }
 
@@ -3299,6 +3475,7 @@ async function fetchData() {
     renderKPIs(d);
     renderAdvice(d);
     renderAutoCompact(d);
+    renderRtkSection(d);
     renderAnalytics(d);
     renderTable(d);
   } catch (err) {

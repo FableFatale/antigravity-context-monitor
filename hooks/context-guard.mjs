@@ -205,6 +205,19 @@ function fmtK(n) {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n);
 }
 
+function detectRtkInstalled() {
+  try {
+    if (existsSync(join(homedir(), '.gemini', 'config', 'plugins', 'rtk', 'plugin.json'))) return true;
+    const isWin = process.platform === 'win32';
+    const binName = isWin ? 'rtk.exe' : 'rtk';
+    const dirs = String(process.env.PATH || '').split(isWin ? ';' : ':').filter(Boolean);
+    for (const dir of dirs) {
+      if (existsSync(join(dir, binName))) return true;
+    }
+  } catch {}
+  return false;
+}
+
 function main() {
   const rawIn = readStdin();
   if (!rawIn) {
@@ -371,6 +384,7 @@ function main() {
   const curStr = fmtK(snap.contextTotal);
   const thStr = fmtK(thresholdTokens);
   const hitStr = `${snap.hitRate}%`;
+  const rtkInstalled = detectRtkInstalled();
 
   // ============================================================================
   // Architecture 1: Tiered Subagent Offloading at Soft Warning (70% - 99%)
@@ -402,6 +416,10 @@ function main() {
       de: `> 🧭 **Context & Cache · Vorwarnung Subagent-Auslagerung (${pct}%)**: Kontext **${curStr}** / **${thStr}** (Cache ${hitStr}). Agent angewiesen, umfangreiche Suchen an \`invoke_subagent\` auszulagern, um den Präfix-Cache zu schonen.`,
     };
 
+    const outputBudgetNote = rtkInstalled
+      ? ` (3) RTK output condenser is active on this machine — keep shell commands batched and avoid \`rtk bypass\` unless raw uncondensed output is strictly required.`
+      : ` (3) Command output budget (fallback): keep shell output compact with flags like \`git status -sb\`, \`git diff --stat\`, \`-n 40\`, \`Select-Object -First 40\`, or targeted failing tests so raw logs do not bloat active context.`;
+
     const out = {
       injectSteps: [
         {
@@ -410,7 +428,8 @@ function main() {
               `[Context & Cache Monitor · Tiered Subagent Offloading (${curStr} / ${thStr}, ${pct}% of threshold, cache hit ${hitStr})] ` +
               `Active context has entered the Soft Warning zone (70%-99% of compaction threshold). To preserve the main thread's prefix cache and avoid premature compaction: ` +
               `(1) Delegate multi-file searches, broad codebase exploration, or verbose test/build runs to \`invoke_subagent\` (\`research\` for read-only surveys, \`self\` for isolated sub-tasks) so bulky tool outputs stay in the subagent's isolated window and only a concise summary returns here. ` +
-              `(2) When reading files directly in the main thread, always pass narrow \`StartLine\`/\`EndLine\` ranges.`,
+              `(2) When reading files directly in the main thread, always pass narrow \`StartLine\`/\`EndLine\` ranges.` +
+              outputBudgetNote,
           },
         },
       ],
@@ -514,6 +533,11 @@ function main() {
         `Finish the current atomic step cleanly, avoid starting large broad searches or reading huge files inline, and keep output concise so compaction can run smoothly.`
       );
     }
+    branchLines.push(
+      rtkInstalled
+        ? `- RTK output condenser active: keep final verification commands compact and avoid \`rtk bypass\`.`
+        : `- Output budget (pure fallback): keep any final shell command output compact (\`--stat\`, \`-n 30\`, targeted tests only) before compaction.`
+    );
     const out = {
       injectSteps: [
         {
