@@ -1257,6 +1257,37 @@
       <div id="acLastResult" style="font-size:11px;color:var(--subtle)"></div>
     </div>
 
+    <!-- Dynamic Idle TTL Guard (Context Length + Reset Time + Hourly Limit) -->
+    <div class="drawer-section">
+      <div class="drawer-sec-head">
+        <span data-i18n="idleGuardTitle">闲置防过期保护 (Idle TTL)</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="status-badge indigo" id="acIdleGuardBadge">-</span>
+          <button type="button" id="acIdleGuardResetAutoBtn" class="btn btn-xs" style="display:none;color:var(--indigo)" data-i18n="resetAutoBtn">恢复自动</button>
+        </div>
+      </div>
+      <label class="p-check">
+        <input type="checkbox" id="acIdleGuardEnabled" checked />
+        <span class="p-check-box"></span>
+        <span data-i18n="idleGuardEnable">高占用静默超时前自动压缩，避免离开后缓存过期冷重算</span>
+      </label>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:2px">
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted)">
+          <span data-i18n="idleGuardMinKLbl">最小上下文 (K)</span>
+          <input type="number" id="acIdleMinK" class="p-input" min="50" max="400" step="10" value="120" style="text-align:center" />
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted)">
+          <span data-i18n="idleGuardResetMinLbl">重置时间 (分)</span>
+          <input type="number" id="acIdleResetMin" class="p-input" min="2" max="30" step="1" value="5" style="text-align:center" />
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted)">
+          <span data-i18n="idleGuardLimitLbl">每小时上限</span>
+          <input type="number" id="acIdleMaxPerHour" class="p-input" min="1" max="30" step="1" value="6" style="text-align:center" />
+        </label>
+      </div>
+      <div id="acIdleGuardHint" style="font-size:11px;color:var(--subtle);line-height:1.45">-</div>
+    </div>
+
     <!-- RTK Output Condenser Companion (Auto-Linked or Pure-Node Fallback) -->
     <div class="drawer-section" id="rtkDrawerSection"></div>
 
@@ -1520,6 +1551,16 @@ const I18N = {
     rtkRepoLink: 'RTK GitHub (rtk-ai/rtk) ↗',
     rtkCopyBtn: 'Copy',
     rtkCopied: (cmd) => `Copied: ${cmd}`,
+    idleGuardTitle: 'Idle TTL Guard (Dynamic)',
+    idleGuardEnable: 'Auto-compact before cache TTL expires when context is high',
+    idleGuardMinKLbl: 'Min Context (K)',
+    idleGuardResetMinLbl: 'Reset (min)',
+    idleGuardLimitLbl: 'Hourly Limit',
+    idleGuardBadgeAuto: 'Auto',
+    idleGuardBadgeManual: 'Manual',
+    idleGuardHintAuto: (minK, mins, lim, samples, used) => `Auto-derived from ${samples} drop-gap samples & threshold: ≥${minK}K & idle ≥${mins}m (used ${used}/${lim} this hour).`,
+    idleGuardHintManual: (minK, mins, lim, used) => `Manual override: ≥${minK}K & idle ≥${mins}m (used ${used}/${lim} this hour).`,
+    tagIdle: '[Idle]',
   },
   zh: {
     langAuto: '自动 (跟随系统)',
@@ -1726,6 +1767,16 @@ const I18N = {
     rtkRepoLink: 'RTK 官方仓库 (rtk-ai/rtk) ↗',
     rtkCopyBtn: '复制',
     rtkCopied: (cmd) => `已复制：${cmd}`,
+    idleGuardTitle: '闲置防过期保护 (Idle TTL)',
+    idleGuardEnable: '高占用静默超时前自动压缩，避免离开后缓存过期冷重算',
+    idleGuardMinKLbl: '最小上下文 (K)',
+    idleGuardResetMinLbl: '重置时间 (分)',
+    idleGuardLimitLbl: '每小时上限',
+    idleGuardBadgeAuto: '动态自动',
+    idleGuardBadgeManual: '手动覆盖',
+    idleGuardHintAuto: (minK, mins, lim, samples, used) => `已按当前阈值与 ${samples} 条闲置骤降样本动态推导：≥${minK}K 且静默 ≥${mins} 分钟触发（本小时已触发 ${used}/${lim} 次）。`,
+    idleGuardHintManual: (minK, mins, lim, used) => `手动覆盖：≥${minK}K 且静默 ≥${mins} 分钟触发（本小时已触发 ${used}/${lim} 次）。`,
+    tagIdle: '[闲置]',
   },
   ja: {
     langAuto: '自動 (システム言語)',
@@ -1932,6 +1983,16 @@ const I18N = {
     rtkRepoLink: 'RTK 公式リポジトリ (rtk-ai/rtk) ↗',
     rtkCopyBtn: 'コピー',
     rtkCopied: (cmd) => `コピーしました: ${cmd}`,
+    idleGuardTitle: 'アイドル TTL 保護 (動的)',
+    idleGuardEnable: '高使用量でキャッシュ失効前に自動圧縮して再計算を回避',
+    idleGuardMinKLbl: '最小コンテキスト (K)',
+    idleGuardResetMinLbl: 'リセット時間 (分)',
+    idleGuardLimitLbl: '1時間上限',
+    idleGuardBadgeAuto: '動的自動',
+    idleGuardBadgeManual: '手動',
+    idleGuardHintAuto: (minK, mins, lim, samples, used) => `${samples} 件の急落間隔サンプルとしきい値から自動算出：≥${minK}K・無操作 ≥${mins}分（直近1時間 ${used}/${lim} 回）。`,
+    idleGuardHintManual: (minK, mins, lim, used) => `手動設定：≥${minK}K・無操作 ≥${mins}分（直近1時間 ${used}/${lim} 回）。`,
+    tagIdle: '[アイドル]',
   },
   fr: {
     langAuto: 'Auto (Système)',
@@ -2138,6 +2199,16 @@ const I18N = {
     rtkRepoLink: 'Dépôt RTK (rtk-ai/rtk) ↗',
     rtkCopyBtn: 'Copier',
     rtkCopied: (cmd) => `Copié : ${cmd}`,
+    idleGuardTitle: 'Garde TTL d’inactivité (Dynamique)',
+    idleGuardEnable: 'Compresser avant expiration du cache TTL lorsque le contexte est élevé',
+    idleGuardMinKLbl: 'Contexte min (K)',
+    idleGuardResetMinLbl: 'Délai (min)',
+    idleGuardLimitLbl: 'Limite / h',
+    idleGuardBadgeAuto: 'Auto',
+    idleGuardBadgeManual: 'Manuel',
+    idleGuardHintAuto: (minK, mins, lim, samples, used) => `Calculé dynamiquement (${samples} échantillons) : ≥${minK}K et inactif ≥${mins} min (${used}/${lim} cette heure).`,
+    idleGuardHintManual: (minK, mins, lim, used) => `Manuel : ≥${minK}K et inactif ≥${mins} min (${used}/${lim} cette heure).`,
+    tagIdle: '[Inactif]',
   },
   de: {
     langAuto: 'Auto (System)',
@@ -2344,6 +2415,16 @@ const I18N = {
     rtkRepoLink: 'RTK GitHub (rtk-ai/rtk) ↗',
     rtkCopyBtn: 'Kopieren',
     rtkCopied: (cmd) => `Kopiert: ${cmd}`,
+    idleGuardTitle: 'Leerlauf-TTL-Schutz (Dynamisch)',
+    idleGuardEnable: 'Vor Cache-TTL-Ablauf automatisch komprimieren, um Kalt-Neuberechnung zu vermeiden',
+    idleGuardMinKLbl: 'Min. Kontext (K)',
+    idleGuardResetMinLbl: 'Reset (Min.)',
+    idleGuardLimitLbl: 'Limit / Std.',
+    idleGuardBadgeAuto: 'Auto',
+    idleGuardBadgeManual: 'Manuell',
+    idleGuardHintAuto: (minK, mins, lim, samples, used) => `Dynamisch aus ${samples} Einbruch-Intervallen berechnet: ≥${minK}K & Leerlauf ≥${mins} Min. (${used}/${lim} diese Std.).`,
+    idleGuardHintManual: (minK, mins, lim, used) => `Manuell: ≥${minK}K & Leerlauf ≥${mins} Min. (${used}/${lim} diese Std.).`,
+    tagIdle: '[Leerlauf]',
   },
 };
 
@@ -2822,6 +2903,33 @@ function renderAutoCompact(d) {
     syncRangeFill();
   }
 
+  // Dynamic Idle TTL Guard rendering
+  const ig = ac.idleGuard || { enabled: true, mode: 'auto', minK: 120, resetMin: 5, maxPerHour: 6, sampleCount: 0, recentTriggersCount: 0 };
+  const igEditing = ['acIdleMinK', 'acIdleResetMin', 'acIdleMaxPerHour'].includes(document.activeElement?.id);
+  const igEnEl = document.getElementById('acIdleGuardEnabled');
+  if (igEnEl) igEnEl.checked = ig.enabled !== false;
+  if (!igEditing) {
+    const minKEl = document.getElementById('acIdleMinK');
+    const resetEl = document.getElementById('acIdleResetMin');
+    const limEl = document.getElementById('acIdleMaxPerHour');
+    if (minKEl) minKEl.value = ig.minK;
+    if (resetEl) resetEl.value = ig.resetMin;
+    if (limEl) limEl.value = ig.maxPerHour;
+  }
+  const igBadge = document.getElementById('acIdleGuardBadge');
+  const igResetBtn = document.getElementById('acIdleGuardResetAutoBtn');
+  const igHint = document.getElementById('acIdleGuardHint');
+  if (igBadge) {
+    igBadge.textContent = ig.mode === 'manual' ? dict.idleGuardBadgeManual : dict.idleGuardBadgeAuto;
+    igBadge.className = ig.mode === 'manual' ? 'status-badge warn' : 'status-badge indigo';
+  }
+  if (igResetBtn) igResetBtn.style.display = ig.mode === 'manual' ? 'inline-flex' : 'none';
+  if (igHint) {
+    igHint.textContent = ig.mode === 'manual'
+      ? dict.idleGuardHintManual(ig.minK, ig.resetMin, ig.maxPerHour, ig.recentTriggersCount || 0)
+      : dict.idleGuardHintAuto(ig.minK, ig.resetMin, ig.maxPerHour, ig.sampleCount || 0, ig.recentTriggersCount || 0);
+  }
+
   const curMode = document.getElementById('acMode').value;
   document.getElementById('acModeHint').textContent = dict.modeHints[curMode] || '';
 
@@ -2940,7 +3048,7 @@ function renderAutoCompact(d) {
     histBox.style.display = 'flex';
     histBox.innerHTML = `<div class="drawer-sec-head"><span>${escHtml(dict.histTitle)}</span></div>` + hist.map((h) => {
       const dt = new Date(h.ts).toLocaleTimeString([], { hour12: false });
-      const tag = h.isTest ? dict.tagTest : (h.mode === 'web_toast_confirm' ? dict.tagConfirm : dict.tagAuto);
+      const tag = h.isTest ? dict.tagTest : (h.triggerReason === 'idle_ttl' ? dict.tagIdle : (h.mode === 'web_toast_confirm' ? dict.tagConfirm : dict.tagAuto));
       return `<div style="display:flex;justify-content:space-between;gap:8px;font-size:11px;line-height:1.4">
         <span style="color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(h.convTitle)}">${dt} ${tag} ${escHtml(h.convTitle)}</span>
         <span style="flex-shrink:0;color:${h.ok ? '#16a34a' : '#d97706'}">${escHtml(h.message)}</span>
@@ -3577,6 +3685,11 @@ async function saveAutoCompactSettings(overrides = {}, silent = false) {
     mode: document.getElementById('acMode').value,
     subagentOffload: document.getElementById('acSubagentOffload').checked,
     postCompactLedger: document.getElementById('acPostCompactLedger').checked,
+    idleGuardEnabled: document.getElementById('acIdleGuardEnabled').checked,
+    idleGuardMode: overrides.idleGuardMode ?? (state.data?.autoCompact?.idleGuard?.mode || 'auto'),
+    idleGuardMinK: Number(document.getElementById('acIdleMinK').value) || 120,
+    idleGuardResetMin: Number(document.getElementById('acIdleResetMin').value) || 5,
+    idleGuardMaxPerHour: Number(document.getElementById('acIdleMaxPerHour').value) || 6,
     idleSeconds: Number(document.getElementById('acIdleSec').value) || 8,
     cooldownSeconds: Number(document.getElementById('acCooldownSec').value) || 120,
     ...overrides,
@@ -3710,6 +3823,11 @@ document.getElementById('acLockManual').onchange = (e) => {
 };
 document.getElementById('acSubagentOffload').onchange = () => saveAutoCompactSettings({}, true);
 document.getElementById('acPostCompactLedger').onchange = () => saveAutoCompactSettings({}, true);
+document.getElementById('acIdleGuardEnabled').onchange = () => saveAutoCompactSettings({}, true);
+document.getElementById('acIdleMinK').onchange = () => saveAutoCompactSettings({ idleGuardMode: 'manual' }, true);
+document.getElementById('acIdleResetMin').onchange = () => saveAutoCompactSettings({ idleGuardMode: 'manual' }, true);
+document.getElementById('acIdleMaxPerHour').onchange = () => saveAutoCompactSettings({ idleGuardMode: 'manual' }, true);
+document.getElementById('acIdleGuardResetAutoBtn').onclick = () => saveAutoCompactSettings({ idleGuardMode: 'auto' });
 document.getElementById('acMode').onchange = () => {
   document.getElementById('acModeHint').textContent = T().modeHints[document.getElementById('acMode').value] || '';
   saveAutoCompactSettings({}, true);

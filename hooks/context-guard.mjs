@@ -429,7 +429,7 @@ function main() {
             systemMessage:
               `[Context & Cache Monitor · Tiered Subagent Offloading (${curStr} / ${thStr}, ${pct}% of threshold, cache hit ${hitStr})] ` +
               `Active context has entered the Soft Warning zone (70%-99% of compaction threshold). To preserve the main thread's prefix cache and avoid premature compaction: ` +
-              `(1) Delegate multi-file searches, broad codebase exploration, or verbose test/build runs to \`invoke_subagent\` (\`research\` for read-only surveys, \`self\` for isolated sub-tasks) so bulky tool outputs stay in the subagent's isolated window and only a concise summary returns here. ` +
+              `(1) Delegate multi-file searches, broad codebase exploration, or verbose test/build runs to \`invoke_subagent\` (\`research\` for read-only surveys, \`self\` for isolated sub-tasks) so bulky tool outputs stay in the subagent's isolated window and only a concise summary returns here; once a one-shot \`research\`/\`self\` subagent finishes and returns its result, immediately dispose of it via \`manage_subagents({ Action: "kill", ConversationIds: ["<id>"] })\` (leave \`browser\` subagents idle if follow-ups are expected). ` +
               `(2) When reading files directly in the main thread, always pass narrow \`StartLine\`/\`EndLine\` ranges.` +
               outputBudgetNote,
           },
@@ -520,7 +520,7 @@ function main() {
     if (enableOffload) {
       branchLines.push(
         `AUTO-BRANCH SESSION HANDOFF DIRECTIVE: If the user's request requires multi-step implementation, code edits, or test runs before this turn ends, you SHOULD immediately spawn a clean branched session via \`invoke_subagent({ TypeName: "self", Workspace: "inherit", Role: "Branched Session Executor", Prompt: "<Compact Task Brief + Active File Ledger>" })\`. ` +
-          `The branched session starts with a fresh ~25K context window and full write/command capabilities, returning only the compact result here so this parent session terminates quickly and compacts cleanly.`
+          `The branched session starts with a fresh ~25K context window and full write/command capabilities, returning only the compact result here — immediately dispose of the finished one-shot subagent via \`manage_subagents({ Action: "kill", ConversationIds: ["<id>"] })\` so this parent session terminates quickly and compacts cleanly.`
       );
       if (activeLedger) {
         if (activeLedger.editedFiles.length > 0) {

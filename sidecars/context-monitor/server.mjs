@@ -478,6 +478,11 @@ const DEFAULT_AUTO_COMPACT = {
   mode: 'ui_send', // 'ui_send' | 'toast_confirm' | 'hook_guard' | 'hook_block' | 'notify'
   subagentOffload: true,
   postCompactLedger: true,
+  idleGuardEnabled: true,
+  idleGuardMode: 'auto', // 'auto' | 'manual'
+  idleGuardMinK: 120,
+  idleGuardResetMin: 5,
+  idleGuardMaxPerHour: 6,
   rtkPath: '',
   snoozedUntil: 0,
   lastTriggeredAt: 0,
@@ -981,6 +986,86 @@ function resolveEffectiveThreshold(target) {
   };
 }
 
+function computeDynamicIdleGuard(effectiveThresholdK) {
+  const allConvs = getAllConversations();
+  const dropGapsSec = [];
+  for (const c of allConvs) {
+    let prevTs = 0;
+    for (const e of c.events) {
+      if (e.type === 'CHECKPOINT' || (e.input === 0 && e.cacheRead === 0)) {
+        prevTs = 0;
+        continue;
+      }
+      if (e.cacheDrop && !e.afterCompaction && prevTs > 0 && e.ts > prevTs) {
+        const gapSec = Math.round((e.ts - prevTs) / 1000);
+        // Focus on realistic idle-TTL expiry window (2m - 30m)
+        if (gapSec >= 120 && gapSec <= 1800) {
+          dropGapsSec.push(gapSec);
+        }
+      }
+      prevTs = e.ts;
+    }
+  }
+  dropGapsSec.sort((a, b) => a - b);
+
+  // Derive reset minutes from the 25th percentile of observed drop idle gaps minus 1-min safety buffer
+  let autoResetMin = 5;
+  if (dropGapsSec.length >= 3) {
+    const p25Idx = Math.floor(dropGapsSec.length * 0.25);
+    const p25Min = Math.round(dropGapsSec[p25Idx] / 60);
+    autoResetMin = Math.max(3, Math.min(12, p25Min - 1));
+  }
+
+  // Derive minimum context K from ~65% of effective threshold (rounded to nearest 10K)
+  const rawMinK = Math.round((effectiveThresholdK * 0.65) / 10) * 10;
+  const autoMinK = Math.max(80, Math.min(Math.max(90, effectiveThresholdK - 20), rawMinK));
+
+  // Derive hourly limit dynamically from reset window
+  const autoMaxPerHour = Math.max(2, Math.min(12, Math.floor(60 / Math.max(3, autoResetMin) / 2)));
+
+  return {
+    autoMinK,
+    autoResetMin,
+    autoMaxPerHour,
+    sampleCount: dropGapsSec.length,
+  };
+}
+
+function resolveEffectiveIdleGuard(effectiveThresholdK) {
+  const dyn = computeDynamicIdleGuard(effectiveThresholdK);
+  const mode = autoCompactConfig.idleGuardMode === 'manual' ? 'manual' : 'auto';
+  const enabled = autoCompactConfig.idleGuardEnabled !== false;
+  const minK = mode === 'manual'
+    ? Math.max(50, Math.min(400, Number(autoCompactConfig.idleGuardMinK) || dyn.autoMinK))
+    : dyn.autoMinK;
+  const resetMin = mode === 'manual'
+    ? Math.max(2, Math.min(30, Number(autoCompactConfig.idleGuardResetMin) || dyn.autoResetMin))
+    : dyn.autoResetMin;
+  const maxPerHour = mode === 'manual'
+    ? Math.max(1, Math.min(30, Number(autoCompactConfig.idleGuardMaxPerHour) || dyn.autoMaxPerHour))
+    : dyn.autoMaxPerHour;
+
+  const hourAgo = Date.now() - 60 * 60 * 1000;
+  const recentTriggersCount = (autoCompactConfig.history || []).filter(
+    (h) => !h.isTest && h.ok && h.triggerReason === 'idle_ttl' && (h.ts || 0) >= hourAgo
+  ).length;
+
+  return {
+    enabled,
+    mode,
+    minK,
+    minTokens: minK * 1000,
+    resetMin,
+    resetMs: resetMin * 60 * 1000,
+    maxPerHour,
+    autoMinK: dyn.autoMinK,
+    autoResetMin: dyn.autoResetMin,
+    autoMaxPerHour: dyn.autoMaxPerHour,
+    sampleCount: dyn.sampleCount,
+    recentTriggersCount,
+  };
+}
+
 function fmtKShort(n) {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n);
 }
@@ -1064,11 +1149,13 @@ async function evaluateAutoCompact(forceTest = false) {
   if (autoCompactRunning) return { skipped: true, reason: 'BUSY' };
   const target = getLatestActiveWatermark(forceTest ? 0 : 30 * 60 * 1000);
   const eff = resolveEffectiveThreshold(target);
+  const idleGuard = resolveEffectiveIdleGuard(eff.effectiveK);
   const now = Date.now();
   const thresholdTokens = eff.effectiveTokens;
   const idleMs = Math.max(2, Number(autoCompactConfig.idleSeconds) || 8) * 1000;
   const cooldownMs = Math.max(15, Number(autoCompactConfig.cooldownSeconds) || 120) * 1000;
   const mode = VALID_MODES.has(autoCompactConfig.mode) ? autoCompactConfig.mode : 'toast_confirm';
+  let triggerReason = 'threshold';
 
   if (!forceTest) {
     if (!autoCompactConfig.enabled) return { skipped: true, reason: 'DISABLED' };
@@ -1082,10 +1169,22 @@ async function evaluateAutoCompact(forceTest = false) {
     ) {
       return { skipped: true, reason: 'ALREADY_TRIGGERED_FOR_TURN' };
     }
-    if (target.contextTotal < thresholdTokens) return { skipped: true, reason: 'BELOW_THRESHOLD' };
+    const isOverThreshold = target.contextTotal >= thresholdTokens;
+    const idleElapsedMs = now - target.lastEventTs;
+    const isIdleTtlReady = Boolean(
+      !isOverThreshold &&
+      idleGuard.enabled &&
+      target.contextTotal >= idleGuard.minTokens &&
+      idleElapsedMs >= idleGuard.resetMs
+    );
+    if (!isOverThreshold && !isIdleTtlReady) return { skipped: true, reason: 'BELOW_THRESHOLD' };
+    if (isIdleTtlReady && idleGuard.recentTriggersCount >= idleGuard.maxPerHour) {
+      return { skipped: true, reason: 'IDLE_LIMIT_REACHED' };
+    }
+    if (isIdleTtlReady) triggerReason = 'idle_ttl';
     if (now < (autoCompactConfig.snoozedUntil || 0)) return { skipped: true, reason: 'SNOOZED' };
     if (target.agentBusy) return { skipped: true, reason: 'AGENT_WORKING' };
-    if (now - target.lastEventTs < idleMs) return { skipped: true, reason: 'SESSION_BUSY' };
+    if (idleElapsedMs < idleMs) return { skipped: true, reason: 'SESSION_BUSY' };
     if (now - (autoCompactConfig.lastTriggeredAt || 0) < cooldownMs) return { skipped: true, reason: 'COOLDOWN' };
   }
 
@@ -1137,11 +1236,12 @@ async function evaluateAutoCompact(forceTest = false) {
       convId: target?.convId || 'manual-test',
       convTitle: target?.convTitle || '手动测试',
       contextTotal: target?.contextTotal || 0,
-      thresholdTokens,
+      thresholdTokens: triggerReason === 'idle_ttl' ? idleGuard.minTokens : thresholdTokens,
       mode,
+      triggerReason,
       ok: Boolean(res.ok),
       reason: res.reason,
-      message: res.message,
+      message: triggerReason === 'idle_ttl' ? `[闲置防过期] ${res.message}` : res.message,
       isTest: forceTest,
     };
     if (!forceTest) {
@@ -1171,6 +1271,7 @@ function getAutoCompactStatus() {
   syncAutoCompactConfigFromDisk();
   const target = getLatestActiveWatermark();
   const eff = resolveEffectiveThreshold(target);
+  const idleGuard = resolveEffectiveIdleGuard(eff.effectiveK);
   const thresholdTokens = eff.effectiveTokens;
   const now = Date.now();
   const cooldownMs = Math.max(15, Number(autoCompactConfig.cooldownSeconds) || 120) * 1000;
@@ -1190,6 +1291,7 @@ function getAutoCompactStatus() {
     autoThresholdK: eff.autoThresholdK,
     autoBasis: eff.autoBasis,
     thresholdMode: eff.thresholdMode,
+    idleGuard,
     cooldownLeftSec,
     snoozeLeftSec,
     activeTarget: target,
@@ -1354,6 +1456,19 @@ export function updateAutoCompactConfig(body = {}) {
   if (VALID_MODES.has(body.mode)) autoCompactConfig.mode = body.mode;
   if (typeof body.subagentOffload === 'boolean') autoCompactConfig.subagentOffload = body.subagentOffload;
   if (typeof body.postCompactLedger === 'boolean') autoCompactConfig.postCompactLedger = body.postCompactLedger;
+  if (typeof body.idleGuardEnabled === 'boolean') autoCompactConfig.idleGuardEnabled = body.idleGuardEnabled;
+  if (body.idleGuardMode === 'auto' || body.idleGuardMode === 'manual') {
+    autoCompactConfig.idleGuardMode = body.idleGuardMode;
+  }
+  if (body.idleGuardMinK !== undefined) {
+    autoCompactConfig.idleGuardMinK = Math.max(50, Math.min(400, Number(body.idleGuardMinK) || 120));
+  }
+  if (body.idleGuardResetMin !== undefined) {
+    autoCompactConfig.idleGuardResetMin = Math.max(2, Math.min(30, Number(body.idleGuardResetMin) || 5));
+  }
+  if (body.idleGuardMaxPerHour !== undefined) {
+    autoCompactConfig.idleGuardMaxPerHour = Math.max(1, Math.min(30, Number(body.idleGuardMaxPerHour) || 6));
+  }
   if (typeof body.rtkPath === 'string') {
     const nextPath = body.rtkPath.trim().replace(/^["']|["']$/g, '').slice(0, 260);
     if (nextPath !== autoCompactConfig.rtkPath) {
