@@ -353,9 +353,6 @@ function main() {
         {
           systemMessage: {
             systemMessage: sysLines.join('\n'),
-            metadata: {
-              user_markdown: LEDGER_BANNER[lang] || LEDGER_BANNER.en,
-            },
           },
         },
       ],
@@ -414,9 +411,6 @@ function main() {
               `Active context has entered the Soft Warning zone (70%-99% of compaction threshold). To preserve the main thread's prefix cache and avoid premature compaction: ` +
               `(1) Delegate multi-file searches, broad codebase exploration, or verbose test/build runs to \`invoke_subagent\` (\`research\` for read-only surveys, \`self\` for isolated sub-tasks) so bulky tool outputs stay in the subagent's isolated window and only a concise summary returns here. ` +
               `(2) When reading files directly in the main thread, always pass narrow \`StartLine\`/\`EndLine\` ranges.`,
-            metadata: {
-              user_markdown: OFFLOAD_BANNER[lang] || OFFLOAD_BANNER.en,
-            },
           },
         },
       ],
@@ -525,9 +519,6 @@ function main() {
         {
           systemMessage: {
             systemMessage: branchLines.join('\n'),
-            metadata: {
-              user_markdown: bannerMd,
-            },
           },
         },
       ],
@@ -536,20 +527,8 @@ function main() {
     return;
   }
 
-  // toast_confirm / notify: zero-token inline user banner (empty systemMessage -> model reads nothing)
-  const out = {
-    injectSteps: [
-      {
-        systemMessage: {
-          systemMessage: '',
-          metadata: {
-            user_markdown: bannerMd,
-          },
-        },
-      },
-    ],
-  };
-  process.stdout.write(JSON.stringify(out));
+  // toast_confirm / notify: let sidecar handle desktop toast/copy without injecting extra model text
+  process.stdout.write('{}');
 }
 
 try {

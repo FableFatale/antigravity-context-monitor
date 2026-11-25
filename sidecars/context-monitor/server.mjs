@@ -543,10 +543,31 @@ function syncAutoCompactConfigFromDisk() {
   } catch {}
 }
 
+function extractTitleTokens(text) {
+  const s = String(text || '').toLowerCase();
+  const tokens = new Set();
+  for (const m of s.matchAll(/[a-z0-9]{4,}/g)) {
+    if (!['outside', 'project', 'antigravity', 'context', 'cache', 'model'].includes(m[0])) tokens.add(m[0]);
+  }
+  const cjk = s.match(/[\u4e00-\u9fff]{2,}/g) || [];
+  for (const seg of cjk) {
+    if (seg.length <= 6) {
+      tokens.add(seg);
+    } else {
+      for (let i = 0; i <= seg.length - 3; i += 2) tokens.add(seg.slice(i, i + 3));
+    }
+  }
+  return [...tokens].slice(0, 14);
+}
+
 function runPowerShellCompact(mode, toastMeta = null, options = {}) {
   const requireForeground = Boolean(options.requireForeground);
   const minInputIdleMs = Math.max(0, Number(options.minInputIdleMs) || 0);
   const keepClipboard = Boolean(options.keepClipboard);
+  const targetTokens = Array.isArray(options.targetTokens) ? options.targetTokens : [];
+  const otherTokens = Array.isArray(options.otherTokens) ? options.otherTokens : [];
+  const anyOtherBusy = Boolean(options.anyOtherBusy);
+  const psArr = (arr) => '@(' + arr.map((x) => `'${String(x).replace(/'/g, "''")}'`).join(',') + ')';
   return new Promise((resolve) => {
     const sendKeysLines = [
       '$procs = @(Get-Process | Where-Object { $_.MainWindowHandle -ne 0 -and ($_.ProcessName -match "antigravity" -or $_.MainWindowTitle -match "Antigravity") })',
@@ -571,6 +592,18 @@ function runPowerShellCompact(mode, toastMeta = null, options = {}) {
             'if ($proc.MainWindowTitle -match "^Context & Cache") {',
             '  @{ ok = $false; deferred = $true; reason = "DEFERRED_DASHBOARD_TAB"; message = "当前停留在 Context & Cache 全屏面板页，待切回聊天会话页后自动发送" } | ConvertTo-Json -Compress',
             '  exit 0',
+            '}',
+            'if ($procs.Count -gt 1) {',
+            '  $fgLower = ([string]$proc.MainWindowTitle).ToLower()',
+            `  $tToks = ${psArr(targetTokens)}`,
+            `  $oToks = ${psArr(otherTokens)}`,
+            '  $tScore = 0; foreach ($k in $tToks) { if ($k -and $fgLower.Contains($k)) { $tScore++ } }',
+            '  $oScore = 0; foreach ($k in $oToks) { if ($k -and $fgLower.Contains($k)) { $oScore++ } }',
+            `  $otherBusy = ${anyOtherBusy ? '$true' : '$false'}`,
+            '  if (($oScore -gt $tScore) -or ($otherBusy -and $tScore -eq 0)) {',
+            '    @{ ok = $false; deferred = $true; reason = "DEFERRED_OTHER_WINDOW"; message = ("前台窗口 [" + $proc.MainWindowTitle + "] 属于其他会话，已静默挂起避免误发") } | ConvertTo-Json -Compress',
+            '    exit 0',
+            '  }',
             '}',
             `$inputIdleMs = [Win32]::GetInputIdleMs()`,
             `if ($inputIdleMs -lt ${minInputIdleMs}) {`,
@@ -1029,6 +1062,20 @@ async function evaluateAutoCompact(forceTest = false) {
       line1: tDict.toastLine1(fmtKShort(target?.contextTotal || thresholdTokens), eff.effectiveK, target?.model || 'Active Model'),
       line2: (target?.convTitle || tDict.toastLine2).slice(0, 32),
     };
+    const recentOthers = !forceTest && target
+      ? getAllConversations()
+          .slice(0, 6)
+          .filter((c) => c.id !== target.convId && now - c.mtimeMs < 15 * 60 * 1000)
+      : [];
+    const hookStateNow = loadHookState();
+    const anyOtherBusy = recentOthers.some((c) => {
+      const hs = hookStateNow[c.id] || {};
+      const hBusy = Boolean(hs.turnActive && !hs.fullyIdle && (hs.startedAt || 0) > (hs.stoppedAt || 0) && now - (hs.startedAt || 0) < 10 * 60 * 1000);
+      return Boolean(c.transcriptBusy || hBusy);
+    });
+    const targetTokens = target ? extractTitleTokens(target.convTitle) : [];
+    const otherTokens = [...new Set(recentOthers.flatMap((c) => extractTitleTokens(c.title)))].filter((t) => !targetTokens.includes(t));
+
     const res = (mode === 'hook_guard' || mode === 'hook_block')
       ? {
           ok: true,
@@ -1040,6 +1087,9 @@ async function evaluateAutoCompact(forceTest = false) {
       : await runPowerShellCompact(mode, toastMeta, {
           requireForeground: !forceTest && mode === 'ui_send',
           minInputIdleMs: !forceTest && mode === 'ui_send' ? Math.min(6000, Math.max(3000, Math.floor(idleMs * 0.6))) : 0,
+          targetTokens,
+          otherTokens,
+          anyOtherBusy,
         });
     if (!forceTest && res.deferred) {
       autoCompactConfig.lastTriggeredStatus = `静默挂起: ${res.message}`;
