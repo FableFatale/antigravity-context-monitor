@@ -4278,7 +4278,7 @@ function renderTable(d) {
 
   body.innerHTML = pageRows.map((e, idx) => {
     const typeHtml = e.isError
-      ? `<span class="badge-err">${escHtml(e.status && e.status !== 'DONE' ? e.status : dict.evErr)}</span>`
+      ? `<span class="badge-err">${escHtml(e.status && e.status !== 'DONE' && e.status !== 'ERROR' ? e.status : dict.evErr)}</span>`
       : e.type === 'CHECKPOINT'
         ? `<span class="badge-cp">${dict.evCp}</span>`
         : (e.cacheDrop && !e.afterCompaction
