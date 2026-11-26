@@ -3599,7 +3599,13 @@ function renderRtkSection(d) {
     const pathInput = document.getElementById('rtkPathInput');
     if (applyBtn) applyBtn.onclick = applyPath;
     if (pathInput) {
-      pathInput.onkeydown = (e) => { if (e.key === 'Enter') applyPath(); };
+      pathInput.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (e.isComposing || e.keyCode === 229) return;
+          applyPath();
+        }
+      };
     }
   }
   box.dataset.lang = state.lang;

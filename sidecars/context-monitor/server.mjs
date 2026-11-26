@@ -995,7 +995,7 @@ function getLatestActiveWatermark(maxIdleMs = 0) {
     if (maxIdleMs > 0 && now - c.mtimeMs > maxIdleMs) continue;
     if (!c.events || c.events.length === 0) continue;
     const lastEv = c.events[c.events.length - 1];
-    const lastCp = [...c.events].reverse().find((e) => e.type === 'CHECKPOINT');
+    const lastCp = c.events.findLast((e) => e.type === 'CHECKPOINT');
     const hs = hookState[c.id] || {};
     const hookBusy = Boolean(
       hs.turnActive &&
