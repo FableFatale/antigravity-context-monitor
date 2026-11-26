@@ -11,8 +11,8 @@
   "homepage": "https://github.com/FableFatale/antigravity-context-monitor",
   "repository": "https://github.com/FableFatale/antigravity-context-monitor",
   "suggestedPrompts": [
-    "打开 Context & Cache 监控面板查看当前上下文占用和缓存命中率",
-    "分析我最近的缓存骤降与压缩行为，并同步推荐阈值到自动压缩配置",
-    "开启自动阈值压缩并设置阈值为 180K"
+    "Open the Context & Cache Monitor dashboard to inspect current context usage and cache hit rate",
+    "Analyze recent cache drops and CHECKPOINT compactions, then sync recommended thresholds",
+    "Enable threshold auto-compact and set the target threshold to 180K"
   ]
 }
