@@ -90,10 +90,22 @@ npm install
 
 ---
 
-## 隐私与架构原则
+## 隐私、安全与架构原则
 
-- **100% 本地运行、严格只读**：零遥测、零外部网络请求。仅只读解析本机 Antigravity 会话日志与 SQLite 元数据，个人配置保存在 Antigravity 官方目录 `plugin_data/context-monitor/auto-compact.json`。
+- **100% 本地运行、默认严格只读**：零遥测、零统计埋点、零后台外部网络请求。仅只读解析本机 Antigravity 会话日志与 SQLite 元数据，个人配置保存在 Antigravity 官方目录 `plugin_data/context-monitor/auto-compact.json`。
 - **单核心驱动**：零外部依赖的 Node.js 引擎（`sidecars/context-monitor/server.mjs`）同时驱动托管 Sidecar 与 MCP App（`mcp/server.mjs`），配合轻量 `PreInvocation` Hook（`hooks/context-guard.mjs`）协同工作。
+
+### 本地执行与安全透明声明
+
+为方便插件市场安全审核与用户评估，本插件所有可选的本机执行或网络能力均遵循 **「默认关闭或仅在用户主动点击时触发」** 原则：
+
+| 能力项 | 触发条件与默认状态 | 作用范围与安全保护 |
+| :--- | :--- | :--- |
+| **会话日志与 SQLite 读取** | 插件启用后生效 | 仅对本机 Antigravity 会话记录与元数据执行严格只读解析，数据不离开本机。 |
+| **Windows `/compact` 界面自动化**（`toast_confirm` / `ui_send`） | **需用户主动开启**（`toast_confirm` 模式下还需手动点击「确定压缩」） | 仅在 Antigravity 为当前前台窗口且键鼠空闲时调用本机 PowerShell 发送 `/compact`，发送后自动还原用户剪贴板；macOS / Linux 不会执行。 |
+| **RTK CLI 一键安装器** | **仅在点击设置页「安装 RTK」按钮时触发** | 调用系统包管理器（`winget` / `brew` / 官方 `install.sh` / `cargo`），绝不在后台静默自动运行。 |
+| **插件更新检查与一键更新** | **仅在点击「检查更新 / 立即更新」时触发** | 无后台轮询；仅在点击时访问 GitHub 比对版本号，并在用户二次确认后执行 `git pull --ff-only origin main`。 |
+| **本机 `ConversationService` 元数据读取** | 当 Antigravity 注入 `ANTIGRAVITY_LS_ADDRESS` 与 `ANTIGRAVITY_CSRF_TOKEN` 时生效 | 仅对本机回环地址调用只读 RPC (`ListConversations`) 以补全会话标题与运行态；环境变量不存在时自动回退到本地文件读取。 |
 
 完整的目录地图、接口契约与开发约束，请查阅面向 AI 与贡献者的 [`llms.txt`](../llms.txt) 和 [`AGENTS.md`](../AGENTS.md)。
 

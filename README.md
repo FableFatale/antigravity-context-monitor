@@ -55,10 +55,12 @@ Read https://raw.githubusercontent.com/FableFatale/antigravity-context-monitor/m
 
 ### Option B · Antigravity CLI (`agy`)
 
-Requires **Node.js `>= 20`** and the **Antigravity CLI (`agy`)**:
+Requires **Node.js `>= 20`**, **Git**, and the **Antigravity CLI (`agy`)**:
 
 ```bash
-agy plugin install https://github.com/FableFatale/antigravity-context-monitor
+git clone https://github.com/FableFatale/antigravity-context-monitor.git
+agy plugin validate ./antigravity-context-monitor
+agy plugin install ./antigravity-context-monitor
 ```
 
 Then install the MCP App server dependencies (if `mcp/node_modules` is not yet present):
@@ -140,10 +142,22 @@ Open the **Settings** drawer in the top-right corner of the dashboard to choose 
 
 ---
 
-## Privacy & Architecture
+## Privacy, Security & Architecture
 
-- **100% Local & Read-Only**: Zero telemetry, zero background network requests. Reads local Antigravity conversation logs and SQLite metadata strictly read-only, storing your preferences in Antigravity's native `plugin_data/context-monitor/auto-compact.json`. Optional GitHub tag checks run only when you explicitly click **Check Updates** (and optional RTK CLI installation runs only when you explicitly click **Install RTK**).
+- **100% Local & Read-Only by Default**: Zero telemetry, zero analytics, and zero background network requests. Reads local Antigravity conversation logs and SQLite metadata strictly read-only, storing your preferences in Antigravity's native `plugin_data/context-monitor/auto-compact.json`.
 - **Single-Source Architecture**: One zero-dependency Node.js engine (`sidecars/context-monitor/server.mjs`) powers both the managed Sidecar and the MCP App (`mcp/server.mjs`), paired with a lightweight `PreInvocation` hook (`hooks/context-guard.mjs`).
+
+### Local Execution & Security Disclosure
+
+For Marketplace security review transparency, every optional local-execution or network capability in this plugin is **disabled by default or strictly user-triggered**:
+
+| Capability | Trigger & Default State | Scope & Safeguards |
+| :--- | :--- | :--- |
+| **Transcript & SQLite Reading** | Active when plugin is enabled | Strictly read-only access to local Antigravity conversation transcripts and metadata. No data leaves your machine. |
+| **Windows `/compact` UI Automation** (`toast_confirm` / `ui_send`) | **Opt-in only** (requires user selection in Settings; `toast_confirm` requires an explicit click on **Compact**) | Runs a local Windows PowerShell helper only when Antigravity is the active foreground window and keyboard/mouse input is idle; preserves and restores the user's clipboard after sending `/compact`. Never runs on macOS/Linux. |
+| **RTK CLI Auto-Installer** | **Explicit button click only** (**Install RTK** in Settings) | Invokes the OS package manager (`winget`, `brew`, official `install.sh`, or `cargo`) solely when the user clicks the install button. Never runs automatically. |
+| **Plugin Update Check & Apply** | **Explicit button click only** (**Check Updates** / **Update Now** in Settings) | Zero background polling. Only contacts GitHub (`raw.githubusercontent.com` / `git ls-remote` / `api.github.com`) when clicked, and runs `git pull --ff-only origin main` only on explicit confirmation. |
+| **Local `ConversationService` Metadata** | Active when `ANTIGRAVITY_LS_ADDRESS` & `ANTIGRAVITY_CSRF_TOKEN` are provided by Antigravity | Read-only localhost RPC (`ListConversations`) to enrich conversation titles and `runState`; gracefully falls back to local files when absent. |
 
 For complete file maps, API contracts, and contributor invariants, see [`llms.txt`](llms.txt) and [`AGENTS.md`](AGENTS.md).
 
