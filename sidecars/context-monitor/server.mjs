@@ -558,6 +558,7 @@ function buildOverview(targetId, dayFilter, modelFilter, hourFilter) {
   const refDate = dayFilter ? new Date(dayFilter + 'T00:00:00') : new Date();
   const targetDayKey = `${refDate.getFullYear()}-${String(refDate.getMonth() + 1).padStart(2, '0')}-${String(refDate.getDate()).padStart(2, '0')}`;
 
+  const convModelMap = new Map(selectedConvs.map((c) => [c.id, c.model]));
   const hourly = Array.from({ length: 24 }, (_, h) => ({
     hour: h,
     label: `${String(h).padStart(2, '0')}:00`,
@@ -568,6 +569,7 @@ function buildOverview(targetId, dayFilter, modelFilter, hourFilter) {
     requests: 0,
     compactions: 0,
     byConv: {},
+    byModel: {},
   }));
 
   for (const e of allEvents) {
@@ -577,6 +579,7 @@ function buildOverview(targetId, dayFilter, modelFilter, hourFilter) {
     const h = d.getHours();
     const b = hourly[h];
     const t = e.input + e.cacheRead + e.output;
+    const modelKey = e.model || convModelMap.get(e.convId) || 'unknown';
     b.tokens += t;
     b.input += e.input;
     b.cacheRead += e.cacheRead;
@@ -584,6 +587,7 @@ function buildOverview(targetId, dayFilter, modelFilter, hourFilter) {
     b.requests += 1;
     if (e.type === 'CHECKPOINT') b.compactions += 1;
     b.byConv[e.convId] = (b.byConv[e.convId] || 0) + t;
+    b.byModel[modelKey] = (b.byModel[modelKey] || 0) + t;
   }
 
   allEvents.sort((a, b) => b.ts - a.ts || b.step - a.step);
