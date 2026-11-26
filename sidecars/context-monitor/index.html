@@ -1348,6 +1348,21 @@
         </div>
       </div>
       <div id="acModeHint" style="font-size:11px;color:var(--subtle);line-height:1.45">-</div>
+      <div id="acSendKeyRow" style="display:flex;flex-direction:column;gap:4px;margin-top:4px;padding-top:8px;border-top:1px dashed var(--border)">
+        <div style="font-size:11.5px;font-weight:600;color:var(--ink)" data-i18n="sendKeyLbl">聊天框提交快捷键（需与 Antigravity 设置一致）</div>
+        <div class="p-select-wrap block" data-select-id="acSendKey">
+          <input type="hidden" id="acSendKey" value="enter" />
+          <button type="button" class="p-select-trigger">
+            <span class="p-select-label">-</span>
+            <svg class="p-select-chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="p-select-menu">
+            <div class="p-select-opt active" data-val="enter"><span data-i18n="sendKeyOptEnter">Enter 发送（默认）</span><span class="opt-check">✓</span></div>
+            <div class="p-select-opt" data-val="ctrl_enter"><span data-i18n="sendKeyOptCtrlEnter">Ctrl + Enter 发送（适配 v2.34+ 设置）</span><span class="opt-check">✓</span></div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--subtle);line-height:1.4" data-i18n="sendKeyHint">若在 Antigravity 中将发送键改为 Ctrl+Enter，请同步切换此处以免 /compact 只换行不发送</div>
+      </div>
       <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;padding-top:8px;border-top:1px dashed var(--border)">
         <label class="p-check">
           <input type="checkbox" id="acSubagentOffload" checked />
@@ -1547,6 +1562,10 @@ const I18N = {
     modeOptToast: 'Desktop Toast Confirmation',
     modeOptHookBlock: 'Hook Hard Gate (Pause Until /compact)',
     modeOptNotify: 'Notify & Copy /compact Only',
+    sendKeyLbl: 'Chat Submit Shortcut (match Antigravity setting)',
+    sendKeyOptEnter: 'Enter to send (Default)',
+    sendKeyOptCtrlEnter: 'Ctrl + Enter to send (Antigravity v2.34+)',
+    sendKeyHint: 'If you switched Antigravity to Ctrl+Enter send, match it here so /compact submits instead of inserting a newline.',
     offloadLbl: 'Soft-warning Subagent Offloading (≥70% guides invoke_subagent to protect cache)',
     ledgerLbl: 'Post-Compaction Memory Ledger (auto-restores modified/read file manifest)',
     timingTitle: 'Idle Wait & Cooldown',
@@ -1800,6 +1819,10 @@ const I18N = {
     modeOptToast: '小 Toast 提醒（点确定立马压缩）',
     modeOptHookBlock: 'Hook 硬拦截（到阈值暂停等 /compact）',
     modeOptNotify: '仅强提醒 + 复制 /compact',
+    sendKeyLbl: '聊天框提交快捷键（需与 Antigravity 设置一致）',
+    sendKeyOptEnter: 'Enter 发送（默认）',
+    sendKeyOptCtrlEnter: 'Ctrl + Enter 发送（适配 v2.34+ 设置）',
+    sendKeyHint: '若在 Antigravity 中将发送键改为 Ctrl+Enter，请同步切换此处以免 /compact 只换行不发送',
     offloadLbl: '软预警子代理分流（≥70% 阈值引导 invoke_subagent 保护缓存）',
     ledgerLbl: '压缩后防失忆账本注入（自动恢复修改/读取文件清单与进度）',
     timingTitle: '空闲等待与冷却时间',
@@ -2053,6 +2076,10 @@ const I18N = {
     modeOptToast: 'トースト確認通知（クリックで即時圧縮）',
     modeOptHookBlock: 'Hook ハードブロック（/compact まで一時停止）',
     modeOptNotify: '通知 + /compact コピーのみ',
+    sendKeyLbl: '送信ショートカット（Antigravity 設定と一致）',
+    sendKeyOptEnter: 'Enter で送信（デフォルト）',
+    sendKeyOptCtrlEnter: 'Ctrl + Enter で送信（Antigravity v2.34+）',
+    sendKeyHint: 'Antigravity 側で Ctrl+Enter 送信に変更した場合はこちらも同期してください（未同期だと /compact が改行のみで送信されません）。',
     offloadLbl: 'ソフト警告サブエージェント分流（≥70% で invoke_subagent へ誘導しキャッシュ保護）',
     ledgerLbl: '圧縮後メモリ台帳の自動注入（変更/参照ファイル一覧と進捗を無損失復元）',
     timingTitle: 'アイドル待機とクールダウン',
@@ -2306,6 +2333,10 @@ const I18N = {
     modeOptToast: 'Confirmation Toast sur le bureau',
     modeOptHookBlock: 'Blocage Hook strict (pause avant /compact)',
     modeOptNotify: 'Notification + copie de /compact',
+    sendKeyLbl: 'Raccourci d’envoi (selon réglage Antigravity)',
+    sendKeyOptEnter: 'Entrée pour envoyer (Par défaut)',
+    sendKeyOptCtrlEnter: 'Ctrl + Entrée pour envoyer (Antigravity v2.34+)',
+    sendKeyHint: 'Si Antigravity utilise Ctrl+Entrée, sélectionnez cette option afin que /compact soit envoyé au lieu d’insérer un saut de ligne.',
     offloadLbl: 'Délégation sous-agent en pré-alerte (≥70% guide invoke_subagent pour protéger le cache)',
     ledgerLbl: 'Registre mémoire post-compaction (restaure la liste des fichiers modifiés/lus)',
     timingTitle: 'Inactivité & Délai de recharge',
@@ -2559,6 +2590,10 @@ const I18N = {
     modeOptToast: 'Desktop-Toast-Bestätigung',
     modeOptHookBlock: 'Hook-Blockade (Pause bis /compact)',
     modeOptNotify: 'Nur Hinweis + /compact kopieren',
+    sendKeyLbl: 'Sende-Tastenkürzel (wie in Antigravity)',
+    sendKeyOptEnter: 'Enter zum Senden (Standard)',
+    sendKeyOptCtrlEnter: 'Strg + Enter zum Senden (Antigravity v2.34+)',
+    sendKeyHint: 'Falls Antigravity auf Strg+Enter eingestellt ist, hier anpassen, damit /compact gesendet statt umgebrochen wird.',
     offloadLbl: 'Vorwarnung Subagent-Auslagerung (≥70% nutzt invoke_subagent zum Cache-Schutz)',
     ledgerLbl: 'Post-Komprimierungs-Ledger (stellt geänderte/gelesene Dateiliste wieder her)',
     timingTitle: 'Leerlauf & Abklingzeit',
@@ -2801,7 +2836,7 @@ function applyI18n() {
   }
   pauseBtn.textContent = state.paused ? dict.resume : dict.pause;
   syncLogExpanded();
-  ['uiLang', 'acMode', 'logCtxFilter', 'logSort', 'logPageSize'].forEach(syncCustomSelect);
+  ['uiLang', 'acMode', 'acSendKey', 'logCtxFilter', 'logSort', 'logPageSize'].forEach(syncCustomSelect);
   if (state.data) {
     renderFilterChips(state.data);
     renderKPIs(state.data);
@@ -3232,6 +3267,13 @@ function renderAutoCompact(d) {
     document.getElementById('acEnabled').checked = Boolean(cfg.enabled);
     document.getElementById('acMode').value = cfg.mode || 'ui_send';
     syncCustomSelect('acMode');
+    document.getElementById('acSendKey').value = cfg.sendKey || 'enter';
+    syncCustomSelect('acSendKey');
+    const sendKeyRow = document.getElementById('acSendKeyRow');
+    if (sendKeyRow) {
+      const m = cfg.mode || 'ui_send';
+      sendKeyRow.style.display = (m === 'ui_send' || m === 'toast_confirm') ? 'flex' : 'none';
+    }
     document.getElementById('acIdleSec').value = cfg.idleSeconds || 8;
     document.getElementById('acCooldownSec').value = cfg.cooldownSeconds || 120;
     document.getElementById('acLockManual').checked = tMode === 'manual_fixed';
@@ -4328,6 +4370,7 @@ async function saveAutoCompactSettings(overrides = {}, silent = false) {
     thresholdMode: overrides.thresholdMode ?? (lockManual ? 'manual_fixed' : curMode),
     thresholdK: Number(document.getElementById('acThresholdK').value) || 180,
     mode: document.getElementById('acMode').value,
+    sendKey: document.getElementById('acSendKey').value,
     subagentOffload: document.getElementById('acSubagentOffload').checked,
     postCompactLedger: document.getElementById('acPostCompactLedger').checked,
     idleGuardEnabled: document.getElementById('acIdleGuardEnabled').checked,
@@ -4376,6 +4419,7 @@ async function triggerCompactImmediately(btnEl) {
 /* Bind Controls */
 initCustomSelect('uiLang');
 initCustomSelect('acMode');
+initCustomSelect('acSendKey');
 initCustomSelect('logCtxFilter');
 initCustomSelect('logSort');
 initCustomSelect('logPageSize');
@@ -4474,9 +4518,13 @@ document.getElementById('acIdleResetMin').onchange = () => saveAutoCompactSettin
 document.getElementById('acIdleMaxPerHour').onchange = () => saveAutoCompactSettings({ idleGuardMode: 'manual' }, true);
 document.getElementById('acIdleGuardResetAutoBtn').onclick = () => saveAutoCompactSettings({ idleGuardMode: 'auto' });
 document.getElementById('acMode').onchange = () => {
-  document.getElementById('acModeHint').textContent = T().modeHints[document.getElementById('acMode').value] || '';
+  const m = document.getElementById('acMode').value;
+  document.getElementById('acModeHint').textContent = T().modeHints[m] || '';
+  const sendKeyRow = document.getElementById('acSendKeyRow');
+  if (sendKeyRow) sendKeyRow.style.display = (m === 'ui_send' || m === 'toast_confirm') ? 'flex' : 'none';
   saveAutoCompactSettings({}, true);
 };
+document.getElementById('acSendKey').onchange = () => saveAutoCompactSettings({}, true);
 document.getElementById('acSaveBtn').onclick = async () => {
   await saveAutoCompactSettings();
   closeDrawer();

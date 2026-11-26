@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { createServer } from 'node:http';
-import { closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -17,11 +17,132 @@ const PORT = Number(process.env.ANTIGRAVITY_SIDECAR_WEB_PORT) || 0;
 const APP_DATA = process.env.ANTIGRAVITY_APP_DATA_DIR || join(homedir(), '.gemini', 'antigravity');
 const BRAIN_DIR = join(APP_DATA, 'brain');
 const CONV_DB_DIR = join(APP_DATA, 'conversations');
+const PLUGIN_DATA_DIR = join(APP_DATA, 'plugin_data', 'context-monitor');
+const PARSE_CACHE_PATH = join(PLUGIN_DATA_DIR, 'transcript-cache-v1.json');
+const PARSE_CACHE_VERSION = 1;
 const ID_RE = /^[0-9a-f-]{8,}$/i;
 const COMPACT_THRESHOLD = 256000;
 const MODEL_RE = /\b((?:gemini-(?:\d|pro|flash|ultra|exp)|claude-|gpt-|o[134]-)[a-z0-9._-]+)\b/gi;
 
 const parseCache = new Map();
+let parseCacheLoaded = false;
+let parseCacheDirty = false;
+let parseCacheSaveTimer = null;
+
+function ensureParseCacheLoaded() {
+  if (parseCacheLoaded) return;
+  parseCacheLoaded = true;
+  try {
+    if (!existsSync(PARSE_CACHE_PATH)) return;
+    const raw = JSON.parse(readFileSync(PARSE_CACHE_PATH, 'utf-8'));
+    if (!raw || raw.version !== PARSE_CACHE_VERSION || !raw.entries || typeof raw.entries !== 'object') return;
+    for (const [id, entry] of Object.entries(raw.entries)) {
+      if (ID_RE.test(id) && entry && typeof entry.mtimeMs === 'number' && typeof entry.size === 'number' && entry.data) {
+        parseCache.set(id, entry);
+      }
+    }
+  } catch {}
+}
+
+export function flushParseCache() {
+  if (!parseCacheDirty) return;
+  parseCacheDirty = false;
+  if (parseCacheSaveTimer) {
+    clearTimeout(parseCacheSaveTimer);
+    parseCacheSaveTimer = null;
+  }
+  try {
+    mkdirSync(PLUGIN_DATA_DIR, { recursive: true });
+    const entries = {};
+    for (const [id, entry] of parseCache.entries()) {
+      entries[id] = entry;
+    }
+    const tmpPath = `${PARSE_CACHE_PATH}.${process.pid}.tmp`;
+    writeFileSync(tmpPath, JSON.stringify({ version: PARSE_CACHE_VERSION, savedAt: Date.now(), entries }), 'utf-8');
+    try {
+      renameSync(tmpPath, PARSE_CACHE_PATH);
+    } catch {
+      writeFileSync(PARSE_CACHE_PATH, readFileSync(tmpPath, 'utf-8'), 'utf-8');
+      try { unlinkSync(tmpPath); } catch {}
+    }
+  } catch {}
+}
+
+function scheduleSaveParseCache() {
+  parseCacheDirty = true;
+  if (parseCacheSaveTimer) return;
+  parseCacheSaveTimer = setTimeout(() => {
+    parseCacheSaveTimer = null;
+    flushParseCache();
+  }, 2000);
+  if (typeof parseCacheSaveTimer.unref === 'function') parseCacheSaveTimer.unref();
+}
+
+const CONV_SVC_TTL_MS = 10000;
+const convServiceCache = {
+  available: false,
+  inFlight: null,
+  checkedAt: 0,
+  lastUpdatedAt: 0,
+  map: new Map(),
+};
+
+export async function refreshConvServiceAsync(force = false) {
+  const addr = String(process.env.ANTIGRAVITY_LS_ADDRESS || '').trim();
+  const csrf = String(process.env.ANTIGRAVITY_CSRF_TOKEN || '').trim();
+  if (!addr || !csrf) {
+    convServiceCache.available = false;
+    return false;
+  }
+  const now = Date.now();
+  if (convServiceCache.inFlight) return convServiceCache.inFlight;
+  if (!force && convServiceCache.checkedAt > 0 && now - convServiceCache.checkedAt < CONV_SVC_TTL_MS) {
+    return convServiceCache.available;
+  }
+  convServiceCache.checkedAt = now;
+  convServiceCache.inFlight = (async () => {
+    try {
+      const res = await fetch(`http://${addr}/product.v1.ConversationService/ListConversations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Connect-Protocol-Version': '1',
+          'x-antigravity-csrf-token': csrf,
+        },
+        body: JSON.stringify({ pageSize: 100, includeArchived: true }),
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!res.ok) {
+        convServiceCache.available = false;
+        return false;
+      }
+      const json = await res.json();
+      const convs = Array.isArray(json?.conversations) ? json.conversations : [];
+      const nextMap = new Map();
+      for (const item of convs) {
+        if (!item?.id) continue;
+        nextMap.set(item.id, {
+          title: String(item.annotations?.title || '').trim(),
+          summary: String(item.state?.summary || '').trim(),
+          runState: String(item.state?.runState || ''),
+          archived: Boolean(item.annotations?.archived),
+          parentConversationId: String(item.metadata?.parentConversationId || ''),
+          updateTime: String(item.state?.updateTime || ''),
+        });
+      }
+      convServiceCache.map = nextMap;
+      convServiceCache.available = true;
+      convServiceCache.lastUpdatedAt = Date.now();
+      return true;
+    } catch {
+      convServiceCache.available = false;
+      return false;
+    } finally {
+      convServiceCache.inFlight = null;
+    }
+  })();
+  return convServiceCache.inFlight;
+}
 
 const TIER_MAP = {
   xhigh: 'XHigh',
@@ -295,17 +416,40 @@ function parseConversation(id) {
     events,
   };
   parseCache.set(id, { mtimeMs: st.mtimeMs, size: st.size, data });
+  scheduleSaveParseCache();
   return data;
 }
 
 function getAllConversations() {
+  ensureParseCacheLoaded();
+  refreshConvServiceAsync();
   if (!existsSync(BRAIN_DIR)) return [];
   const entries = readdirSync(BRAIN_DIR, { withFileTypes: true });
+  const activeIds = new Set();
   const list = [];
   for (const entry of entries) {
     if (!entry.isDirectory() || !ID_RE.test(entry.name)) continue;
+    activeIds.add(entry.name);
     const parsed = parseConversation(entry.name);
-    if (parsed) list.push(parsed);
+    if (!parsed) continue;
+    const lsMeta = convServiceCache.map.get(parsed.id);
+    if (lsMeta) {
+      const officialTitle = lsMeta.title || lsMeta.summary;
+      if (officialTitle && officialTitle !== parsed.title) {
+        parsed.title = officialTitle;
+        for (const ev of parsed.events) ev.convTitle = officialTitle;
+      }
+      parsed.lsRunState = lsMeta.runState || '';
+      parsed.lsArchived = lsMeta.archived;
+      parsed.lsParentId = lsMeta.parentConversationId || '';
+    }
+    list.push(parsed);
+  }
+  for (const cachedId of parseCache.keys()) {
+    if (!activeIds.has(cachedId)) {
+      parseCache.delete(cachedId);
+      scheduleSaveParseCache();
+    }
   }
   list.sort((a, b) => b.mtimeMs - a.mtimeMs);
   return list;
@@ -540,7 +684,6 @@ function computeThresholdAdvice(events) {
   };
 }
 
-const PLUGIN_DATA_DIR = join(APP_DATA, 'plugin_data', 'context-monitor');
 const AUTO_COMPACT_PATH = join(PLUGIN_DATA_DIR, 'auto-compact.json');
 const AUTO_COMPACT_LOCK_PATH = join(PLUGIN_DATA_DIR, 'auto-compact.lock');
 
@@ -556,6 +699,7 @@ const DEFAULT_AUTO_COMPACT = {
   idleSeconds: 8,
   cooldownSeconds: 120,
   mode: 'ui_send', // 'ui_send' | 'toast_confirm' | 'hook_guard' | 'hook_block' | 'notify'
+  sendKey: 'enter', // 'enter' | 'ctrl_enter'
   subagentOffload: true,
   postCompactLedger: true,
   idleGuardEnabled: true,
@@ -647,6 +791,7 @@ function saveAutoCompactConfig(cfg) {
 }
 
 const VALID_MODES = new Set(['toast_confirm', 'ui_send', 'hook_guard', 'hook_block', 'notify']);
+const VALID_SEND_KEYS = new Set(['enter', 'ctrl_enter']);
 const VALID_THRESHOLD_MODES = new Set(['auto', 'manual_next', 'manual_fixed']);
 let autoCompactConfig = loadAutoCompactConfig();
 let autoCompactConfigMtime = 0;
@@ -728,6 +873,10 @@ function runPowerShellCompact(mode, toastMeta = null, options = {}) {
   const targetTokens = Array.isArray(options.targetTokens) ? options.targetTokens : [];
   const otherTokens = Array.isArray(options.otherTokens) ? options.otherTokens : [];
   const anyOtherBusy = Boolean(options.anyOtherBusy);
+  const sendKey = VALID_SEND_KEYS.has(options.sendKey)
+    ? options.sendKey
+    : (VALID_SEND_KEYS.has(autoCompactConfig.sendKey) ? autoCompactConfig.sendKey : 'enter');
+  const submitKeySeq = sendKey === 'ctrl_enter' ? '^{ENTER}' : '{ENTER}';
   const psArr = (arr) => '@(' + arr.map((x) => `'${String(x).replace(/'/g, "''")}'`).join(',') + ')';
   return new Promise((resolve) => {
     const sendKeysLines = [
@@ -803,7 +952,7 @@ function runPowerShellCompact(mode, toastMeta = null, options = {}) {
       'Start-Sleep -Milliseconds 140',
       '[System.Windows.Forms.SendKeys]::SendWait("{ENTER}")',
       'Start-Sleep -Milliseconds 140',
-      '[System.Windows.Forms.SendKeys]::SendWait("{ENTER}")',
+      `[System.Windows.Forms.SendKeys]::SendWait("${submitKeySeq}")`,
       'Start-Sleep -Milliseconds 130',
       ...(keepClipboard ? [] : ['if ($null -ne $oldClip) { try { [System.Windows.Forms.Clipboard]::SetText($oldClip) } catch {} }']),
     ];
@@ -1003,7 +1152,11 @@ function getLatestActiveWatermark(maxIdleMs = 0) {
       (hs.startedAt || 0) > (hs.stoppedAt || 0) &&
       now - (hs.startedAt || 0) < 10 * 60 * 1000
     );
-    const agentBusy = Boolean(c.transcriptBusy || hookBusy);
+    const lsState = c.lsRunState || convServiceCache.map.get(c.id)?.runState || '';
+    const hasAuthRunState = lsState === 'RUN_STATE_RUNNING' || lsState === 'RUN_STATE_CANCELLING' || lsState === 'RUN_STATE_IDLE';
+    const agentBusy = hasAuthRunState
+      ? (lsState === 'RUN_STATE_RUNNING' || lsState === 'RUN_STATE_CANCELLING')
+      : Boolean(c.transcriptBusy || hookBusy);
     const liveTokens = lastEv.liveContextTokens ?? lastEv.contextTotal;
     return {
       convId: c.id,
@@ -1366,6 +1519,9 @@ async function evaluateAutoCompact(forceTest = false) {
       : [];
     const hookStateNow = loadHookState();
     const anyOtherBusy = recentOthers.some((c) => {
+      const lsState = c.lsRunState || convServiceCache.map.get(c.id)?.runState || '';
+      if (lsState === 'RUN_STATE_RUNNING' || lsState === 'RUN_STATE_CANCELLING') return true;
+      if (lsState === 'RUN_STATE_IDLE') return false;
       const hs = hookStateNow[c.id] || {};
       const hBusy = Boolean(hs.turnActive && !hs.fullyIdle && (hs.startedAt || 0) > (hs.stoppedAt || 0) && now - (hs.startedAt || 0) < 10 * 60 * 1000);
       return Boolean(c.transcriptBusy || hBusy);
@@ -2155,6 +2311,11 @@ export function getFullOverview({ id = 'all', day = '', model = 'all', hour = ''
   data.autoCompact = acStatus;
   data.rtkStats = getRtkStatsSnapshot(data.targetDay);
   data.pluginInfo = getPluginInfo();
+  data.convService = {
+    available: convServiceCache.available,
+    count: convServiceCache.map.size,
+    lastUpdatedAt: convServiceCache.lastUpdatedAt,
+  };
   if (data.latestWatermark && acStatus.thresholdTokens) {
     data.latestWatermark.threshold = acStatus.thresholdTokens;
     data.latestWatermark.pct = Math.min(100, Math.round((data.latestWatermark.contextTokens / acStatus.thresholdTokens) * 100));
@@ -2178,6 +2339,7 @@ export function updateAutoCompactConfig(body = {}) {
   if (body.idleSeconds !== undefined) autoCompactConfig.idleSeconds = Math.max(2, Math.min(120, Number(body.idleSeconds) || 8));
   if (body.cooldownSeconds !== undefined) autoCompactConfig.cooldownSeconds = Math.max(15, Math.min(3600, Number(body.cooldownSeconds) || 120));
   if (VALID_MODES.has(body.mode)) autoCompactConfig.mode = body.mode;
+  if (VALID_SEND_KEYS.has(body.sendKey)) autoCompactConfig.sendKey = body.sendKey;
   if (typeof body.subagentOffload === 'boolean') autoCompactConfig.subagentOffload = body.subagentOffload;
   if (typeof body.postCompactLedger === 'boolean') autoCompactConfig.postCompactLedger = body.postCompactLedger;
   if (typeof body.idleGuardEnabled === 'boolean') autoCompactConfig.idleGuardEnabled = body.idleGuardEnabled;
