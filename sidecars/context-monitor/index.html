@@ -709,6 +709,11 @@
   }
   .badge-cp { background: #f3e8ff; color: #7e22ce; padding: 2px 6px; border-radius: 5px; font-size: 11px; font-weight: 600; }
   .badge-drop { background: #fef3c7; color: #b45309; padding: 2px 6px; border-radius: 5px; font-size: 11px; font-weight: 600; }
+  .badge-drop-reason { display: inline-flex; align-items: center; margin-left: 5px; padding: 1.5px 6px; border-radius: 5px; font-size: 10.5px; font-weight: 500; vertical-align: middle; white-space: nowrap; }
+  .badge-drop-reason.dr-idle { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+  .badge-drop-reason.dr-model { background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; }
+  .badge-drop-reason.dr-short { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
+  .badge-drop-reason.dr-err { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
   .badge-err { background: #fee2e2; color: #b91c1c; padding: 2px 6px; border-radius: 5px; font-size: 11px; font-weight: 600; }
 
   .logs-pager {
@@ -1639,6 +1644,12 @@ const I18N = {
     evErr: 'Error',
     evCp: 'CHECKPOINT',
     evDrop: 'Cache Drop',
+    dropReasonIdle: (gap) => `Idle ${gap}`,
+    dropReasonModel: 'Model Switch',
+    dropReasonSettings: 'Settings',
+    dropReasonError: 'Post-Error',
+    dropReasonShortHigh: (gap) => `Short ${gap} · High Ctx`,
+    dropReasonShort: (gap) => `Short ${gap}`,
     evNormal: 'Normal',
     toastSaved: 'Settings saved',
     toastTriggered: '✅ Sent /compact and compaction started',
@@ -1886,6 +1897,12 @@ const I18N = {
     evErr: '错误',
     evCp: 'CHECKPOINT 压缩',
     evDrop: '缓存骤降',
+    dropReasonIdle: (gap) => `闲置 ${gap}`,
+    dropReasonModel: '切模型',
+    dropReasonSettings: '设置变更',
+    dropReasonError: '报错后',
+    dropReasonShortHigh: (gap) => `短间隔 ${gap} · 高占用`,
+    dropReasonShort: (gap) => `短间隔 ${gap}`,
     evNormal: '正常',
     toastSaved: '设置已保存',
     toastTriggered: '✅ 已成功向聊天框发送 /compact 并触发压缩',
@@ -2133,6 +2150,12 @@ const I18N = {
     evErr: 'エラー',
     evCp: 'CHECKPOINT 圧縮',
     evDrop: 'キャッシュ急落',
+    dropReasonIdle: (gap) => `待機 ${gap}`,
+    dropReasonModel: 'モデル切替',
+    dropReasonSettings: '設定変更',
+    dropReasonError: 'エラー後',
+    dropReasonShortHigh: (gap) => `短間隔 ${gap} · 高占有`,
+    dropReasonShort: (gap) => `短間隔 ${gap}`,
     evNormal: '通常',
     toastSaved: '設定を保存しました',
     toastTriggered: '✅ /compact を送信し圧縮を開始しました',
@@ -2380,6 +2403,12 @@ const I18N = {
     evErr: 'Erreur',
     evCp: 'CHECKPOINT',
     evDrop: 'Chute cache',
+    dropReasonIdle: (gap) => `Inactif ${gap}`,
+    dropReasonModel: 'Chgt modèle',
+    dropReasonSettings: 'Paramètres',
+    dropReasonError: 'Post-erreur',
+    dropReasonShortHigh: (gap) => `Court ${gap} · Haut`,
+    dropReasonShort: (gap) => `Court ${gap}`,
     evNormal: 'Normal',
     toastSaved: 'Paramètres enregistrés',
     toastTriggered: '✅ /compact envoyé et compression lancée',
@@ -2627,6 +2656,12 @@ const I18N = {
     evErr: 'Fehler',
     evCp: 'CHECKPOINT',
     evDrop: 'Cache-Einbruch',
+    dropReasonIdle: (gap) => `Inaktiv ${gap}`,
+    dropReasonModel: 'Modellwechsel',
+    dropReasonSettings: 'Einstellungen',
+    dropReasonError: 'Nach Fehler',
+    dropReasonShortHigh: (gap) => `Kurz ${gap} · Hoch`,
+    dropReasonShort: (gap) => `Kurz ${gap}`,
     evNormal: 'Normal',
     toastSaved: 'Einstellungen gespeichert',
     toastTriggered: '✅ /compact gesendet und Komprimierung gestartet',
@@ -4151,13 +4186,55 @@ function renderTable(d) {
     return;
   }
 
+  const fmtDropGap = (sec) => {
+    if (sec === null || sec === undefined || sec < 0) return '';
+    if (sec < 60) return `${sec}s`;
+    if (sec < 3600) return `${Math.round(sec / 60)}m`;
+    return `${(sec / 3600).toFixed(1).replace(/\.0$/, '')}h`;
+  };
+  const renderDropReasonTag = (e) => {
+    const r = e.dropReason || '';
+    if (!r || r === 'unknown') return '';
+    const gap = fmtDropGap(e.dropGapSec);
+    let label = '';
+    let cls = 'dr-idle';
+    let tip = '';
+    if (r === 'model_switch') {
+      label = dict.dropReasonModel;
+      cls = 'dr-model';
+      tip = e.dropPrevModel ? `${e.dropPrevModel} → ${e.model || ''}` : label;
+    } else if (r === 'settings_change') {
+      label = dict.dropReasonSettings;
+      cls = 'dr-model';
+      tip = label;
+    } else if (r === 'idle_ttl') {
+      label = dict.dropReasonIdle(gap || '3m+');
+      cls = 'dr-idle';
+      tip = e.dropGapSec !== null ? `${e.dropGapSec}s` : label;
+    } else if (r === 'after_error') {
+      label = dict.dropReasonError;
+      cls = 'dr-err';
+      tip = label;
+    } else if (r === 'short_gap_high_ctx') {
+      label = dict.dropReasonShortHigh(gap || '<3m');
+      cls = 'dr-short';
+      tip = e.dropGapSec !== null ? `${e.dropGapSec}s` : label;
+    } else if (r === 'short_gap') {
+      label = dict.dropReasonShort(gap || '<3m');
+      cls = 'dr-short';
+      tip = e.dropGapSec !== null ? `${e.dropGapSec}s` : label;
+    }
+    if (!label) return '';
+    return `<span class="badge-drop-reason ${cls}" title="${escHtml(tip)}">${escHtml(label)}</span>`;
+  };
+
   body.innerHTML = pageRows.map((e, idx) => {
     const typeHtml = e.isError
       ? `<span class="badge-err">${escHtml(e.status && e.status !== 'DONE' ? e.status : dict.evErr)}</span>`
       : e.type === 'CHECKPOINT'
         ? `<span class="badge-cp">${dict.evCp}</span>`
         : (e.cacheDrop && !e.afterCompaction
-          ? `<span class="badge-drop">${dict.evDrop}</span>`
+          ? `<span class="badge-drop">${dict.evDrop}</span>${renderDropReasonTag(e)}`
           : `<span style="color:var(--subtle)">${escHtml(e.type || dict.evNormal)}</span>`);
     const hasDetail = Boolean(e.detail);
     const hitColor = e.hitRate < 60 ? 'var(--red)' : e.hitRate < 85 ? 'var(--amber)' : 'var(--green)';

@@ -125,6 +125,8 @@ function parseConversation(id) {
   let lastRawStatus = 'DONE';
   let lastRawToolCalls = 0;
   let sawCheckpointSinceLastToken = false;
+  let sawErrorSinceLastToken = false;
+  let sawSettingsChangeSinceLastToken = false;
   let lastTokenEvent = null;
   const runningTaskIds = new Set();
 
@@ -161,6 +163,9 @@ function parseConversation(id) {
     }
 
     if (typeof obj.content === 'string') {
+      if (/<USER_SETTINGS_CHANGE>|changed\s+setting\s+`/i.test(obj.content)) {
+        sawSettingsChangeSinceLastToken = true;
+      }
       const mMatch = obj.content.match(/(?:changed\s+setting\s+`?Model Selection`?|Model Selection\s+from)\b[^\n]{0,120}?\bto\s+([A-Za-z][^\n<`"]{1,58}?)(?:\.\s+(?:No need|If reporting)|\.?\s*(?:\n|<|$))/i);
       if (mMatch && mMatch[1]) {
         const cleaned = normalizeModelName(mMatch[1].replace(/\.+$/, '').trim());
@@ -174,6 +179,7 @@ function parseConversation(id) {
     const isError = obj.status === 'ERROR' || obj.type === 'ERROR_MESSAGE';
     if (isError) {
       errorCount++;
+      sawErrorSinceLastToken = true;
     }
 
     const isCheckpoint = obj.type === 'CHECKPOINT';
@@ -193,13 +199,36 @@ function parseConversation(id) {
 
     let cacheDrop = false;
     let afterCompaction = false;
+    let dropReason = '';
+    let dropGapSec = null;
+    let dropPrevModel = '';
+    const resolvedStepModel = stepModel || currentModel || '';
     if (hasTokens && !isCheckpoint) {
       afterCompaction = sawCheckpointSinceLastToken;
       if (!afterCompaction && lastTokenEvent && lastTokenEvent.cacheRead > 10000 && cacheRead < lastTokenEvent.cacheRead * 0.5) {
         cacheDrop = true;
+        dropGapSec = (Number.isFinite(lastTokenEvent.ts) && Number.isFinite(ts))
+          ? Math.max(0, Math.round((ts - lastTokenEvent.ts) / 1000))
+          : null;
+        if (lastTokenEvent.model && resolvedStepModel && lastTokenEvent.model !== resolvedStepModel) {
+          dropReason = 'model_switch';
+          dropPrevModel = lastTokenEvent.model;
+        } else if (sawSettingsChangeSinceLastToken) {
+          dropReason = 'settings_change';
+        } else if (dropGapSec !== null && dropGapSec >= 180) {
+          dropReason = 'idle_ttl';
+        } else if (sawErrorSinceLastToken) {
+          dropReason = 'after_error';
+        } else if (dropGapSec !== null && dropGapSec < 180) {
+          dropReason = contextTotal >= 200000 ? 'short_gap_high_ctx' : 'short_gap';
+        } else {
+          dropReason = 'unknown';
+        }
       }
       sawCheckpointSinceLastToken = false;
-      lastTokenEvent = { cacheRead, input, ts };
+      sawErrorSinceLastToken = false;
+      sawSettingsChangeSinceLastToken = false;
+      lastTokenEvent = { cacheRead, input, ts, model: resolvedStepModel };
     }
 
     let detail = '';
@@ -217,7 +246,7 @@ function parseConversation(id) {
     events.push({
       convId: id,
       convTitle: title || id.slice(0, 8),
-      model: stepModel || currentModel || '',
+      model: resolvedStepModel,
       step: obj.step_index ?? 0,
       type: obj.type || 'PLANNER_RESPONSE',
       status: obj.status || 'DONE',
@@ -232,6 +261,9 @@ function parseConversation(id) {
       liveContextTokens,
       hitRate: Number(hitRate.toFixed(1)),
       cacheDrop,
+      dropReason,
+      dropGapSec,
+      dropPrevModel,
       afterCompaction,
     });
   }
