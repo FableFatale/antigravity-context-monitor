@@ -82,8 +82,8 @@ npm install
 
 | 策略模式 | 行为说明 | 支持平台 |
 | :--- | :--- | :--- |
-| **桌面弹窗确认**（`toast_confirm`） | 在右下角弹出不抢占焦点的轻量提醒。点击「确定压缩」立即执行 `/compact`，也可点 `+20K` 延后本次阈值。 | Windows |
-| **空闲全自动压缩**（`ui_send`） | 等待当前会话空闲指定秒数后，自动向 Antigravity 窗口发送 `/compact` 并在发送后还原剪贴板。 | Windows |
+| **桌面弹窗确认**（`toast_confirm`） | 弹出轻量确认提醒（Windows 右下角不抢焦点弹窗 / macOS 原生对话框）。点击「确定压缩」立即执行 `/compact`，也可点 `+20K` 延后本次阈值。 | Windows / macOS |
+| **空闲全自动压缩**（`ui_send`） | 等待当前会话空闲指定秒数后，自动向 Antigravity 窗口发送 `/compact` 并在发送后还原剪贴板。 | Windows / macOS |
 | **Hook 温和护航**（`hook_guard`） | 通过 `PreInvocation` Hook 注入 0-token 聊天内联提示，引导模型先收尾当前步骤，避开高代价大范围检索。 | Windows / macOS / Linux |
 | **Hook 严格拦截**（`hook_block`） | 超出阈值后暂停下一轮模型调用，直到你主动执行 `/compact` 后恢复放行。 | Windows / macOS / Linux |
 | **仅提醒并复制命令**（`notify`） | 自动复制 `/compact` 到剪贴板并给出提示，不触碰任何窗口。 | Windows / macOS / Linux |
@@ -102,7 +102,7 @@ npm install
 | 能力项 | 触发条件与默认状态 | 作用范围与安全保护 |
 | :--- | :--- | :--- |
 | **会话日志与 SQLite 读取** | 插件启用后生效 | 仅对本机 Antigravity 会话记录与元数据执行严格只读解析，数据不离开本机。 |
-| **Windows `/compact` 界面自动化**（`toast_confirm` / `ui_send`） | **需用户主动开启**（`toast_confirm` 模式下还需手动点击「确定压缩」） | 仅在 Antigravity 为当前前台窗口且键鼠空闲时调用本机 PowerShell 发送 `/compact`，发送后自动还原用户剪贴板；macOS / Linux 不会执行。 |
+| **桌面 `/compact` 界面自动化**（`toast_confirm` / `ui_send`） | **需用户主动开启**（`toast_confirm` 模式下还需手动点击「确定压缩」） | Windows 端仅在 Antigravity 为当前前台窗口且键鼠空闲时调用本机 PowerShell 发送 `/compact`；macOS 端通过原生 `osascript` 与 `pbcopy`/`pbpaste` 执行（若未授予辅助功能权限则自动保留 `/compact` 在剪贴板并提示）；发送后自动还原用户剪贴板。Linux 端仅回退剪贴板与桌面通知，绝不调用 PowerShell。 |
 | **RTK CLI 一键安装器** | **仅在点击设置页「安装 RTK」按钮时触发** | 调用系统包管理器（`winget` / `brew` / 官方 `install.sh` / `cargo`），绝不在后台静默自动运行。 |
 | **插件更新检查与一键更新** | **仅在点击「检查更新 / 立即更新」时触发** | 无后台轮询；仅在点击时访问 GitHub 比对版本号，并在用户二次确认后执行 `git pull --ff-only origin main`。 |
 | **本机 `ConversationService` 元数据读取** | 当 Antigravity 注入 `ANTIGRAVITY_LS_ADDRESS` 与 `ANTIGRAVITY_CSRF_TOKEN` 时生效 | 仅对本机回环地址调用只读 RPC (`ListConversations`) 以补全会话标题与运行态；环境变量不存在时自动回退到本地文件读取。 |

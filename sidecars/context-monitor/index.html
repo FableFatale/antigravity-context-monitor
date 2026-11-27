@@ -1004,7 +1004,7 @@
     <div class="topbar-left">
       <span class="live-dot" id="liveDot"></span>
       <span class="brand-title">Context &amp; Cache</span>
-      <button type="button" class="status-badge ver-pill" id="pluginVerTopBtn" data-i18n-title="pluginVerTopTip" title="Click to check for updates (zero background requests)">v1.8.11</button>
+      <button type="button" class="status-badge ver-pill" id="pluginVerTopBtn" data-i18n-title="pluginVerTopTip" title="Click to check for updates (zero background requests)">v1.8.12</button>
       <span class="status-badge" id="lastActiveBadge" data-i18n="loading">加载中…</span>
       <button type="button" class="status-badge rtk-pill" id="rtkTopBadge" style="display:none" title="RTK Output Condenser"></button>
       <button type="button" class="btn btn-primary btn-xs" id="rtkTopInstallBtn" style="display:none;height:22px;padding:0 9px;border-radius:999px;font-size:11px" data-i18n="rtkInstallBtn">安装 RTK</button>
@@ -3775,7 +3775,7 @@ function renderPluginUpdateSection(d) {
   const btn = document.getElementById('pluginVerTopBtn');
   if (!btn) return;
   const info = d?.pluginInfo || {};
-  const curVer = info.version || pluginUpdateState.result?.currentVersion || '1.8.11';
+  const curVer = info.version || pluginUpdateState.result?.currentVersion || '1.8.12';
   const isGitRepo = info.isGitRepo !== undefined ? Boolean(info.isGitRepo) : Boolean(pluginUpdateState.result?.isGitRepo);
   const busy = pluginUpdateState.phase === 'checking' || pluginUpdateState.phase === 'updating';
 

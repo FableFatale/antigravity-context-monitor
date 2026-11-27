@@ -871,6 +871,13 @@ function extractTitleTokens(text) {
 }
 
 function runPowerShellCompact(mode, toastMeta = null, options = {}) {
+  if (process.platform !== 'win32') {
+    return Promise.resolve({
+      ok: false,
+      reason: 'UNSUPPORTED_PLATFORM',
+      message: 'PowerShell compact helper is only available on Windows (win32).',
+    });
+  }
   const requireForeground = Boolean(options.requireForeground);
   const minInputIdleMs = Math.max(0, Number(options.minInputIdleMs) || 0);
   const keepClipboard = Boolean(options.keepClipboard);
@@ -1130,6 +1137,223 @@ function runPowerShellCompact(mode, toastMeta = null, options = {}) {
       }
     );
   });
+}
+
+function execFileWithInput(cmd, args, input = '', opts = {}) {
+  return new Promise((resolve) => {
+    const child = execFile(cmd, args, { encoding: 'utf8', windowsHide: true, ...opts }, (err, stdout, stderr) => {
+      resolve({
+        ok: !err,
+        code: err && typeof err.code === 'number' ? err.code : (err ? 1 : 0),
+        stdout: String(stdout || ''),
+        stderr: String(stderr || ''),
+        error: err ? String(err.message || err) : '',
+      });
+    });
+    if (child.stdin) {
+      child.stdin.on('error', () => {});
+      child.stdin.end(String(input ?? ''));
+    }
+  });
+}
+
+function escapeAppleScriptString(str) {
+  return String(str || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\r?\n/g, ' ');
+}
+
+export async function runMacOsCompact(mode, toastMeta = null, options = {}) {
+  const execFn = options._execFileAsync || execFileAsync;
+  const execInFn = options._execFileWithInput || execFileWithInput;
+  const keepClipboard = Boolean(options.keepClipboard);
+  const sendKey = VALID_SEND_KEYS.has(options.sendKey)
+    ? options.sendKey
+    : (VALID_SEND_KEYS.has(autoCompactConfig.sendKey) ? autoCompactConfig.sendKey : 'enter');
+
+  const sendKeystrokes = async () => {
+    const prevClipRes = await execFn('pbpaste', [], { timeout: 2000 });
+    const prevClip = prevClipRes.ok ? prevClipRes.stdout : null;
+
+    const copyRes = await execInFn('pbcopy', [], '/compact', { timeout: 2000 });
+    if (!copyRes.ok) {
+      return {
+        ok: false,
+        reason: 'CLIPBOARD_ERROR',
+        message: (copyRes.stderr || copyRes.error || 'pbcopy failed').trim().slice(0, 200),
+      };
+    }
+
+    const submitLine = sendKey === 'ctrl_enter'
+      ? 'key code 36 using control down'
+      : 'key code 36';
+    const script = [
+      'tell application "System Events"',
+      '  keystroke "v" using command down',
+      '  delay 0.14',
+      '  key code 36',
+      '  delay 0.14',
+      `  ${submitLine}`,
+      '  delay 0.13',
+      'end tell',
+    ].join('\n');
+
+    const osaRes = await execFn('osascript', ['-e', script], { timeout: 10000 });
+    if (!osaRes.ok) {
+      const errText = `${osaRes.stderr || ''} ${osaRes.error || ''}`;
+      if (/(-1719|1002|not allowed assistive access|assistive|accessibility)/i.test(errText)) {
+        // Leave /compact in clipboard so the user can paste immediately
+        return {
+          ok: false,
+          copiedOnly: true,
+          reason: 'MACOS_ACCESSIBILITY_REQUIRED',
+          message: '已复制 /compact 到剪贴板。macOS 辅助功能权限未开启，请在「系统设置 → 隐私与安全性 → 辅助功能」授权 Antigravity/Terminal，或切换为 notify / hook_guard / hook_block 模式。',
+        };
+      }
+      if (!keepClipboard && prevClip !== null) {
+        await execInFn('pbcopy', [], prevClip, { timeout: 2000 });
+      }
+      return {
+        ok: false,
+        copiedOnly: keepClipboard,
+        reason: 'OSASCRIPT_ERROR',
+        message: (osaRes.stderr || osaRes.error || 'osascript failed').trim().slice(0, 200),
+      };
+    }
+
+    if (!keepClipboard && prevClip !== null) {
+      await execInFn('pbcopy', [], prevClip, { timeout: 2000 });
+    }
+    return {
+      ok: true,
+      action: 'ui_send',
+      reason: 'SENT_KEYS',
+      message: '已通过 macOS System Events 发送 /compact',
+    };
+  };
+
+  if (mode === 'notify') {
+    await execInFn('pbcopy', [], '/compact', { timeout: 2000 });
+    const tDict = BACKEND_I18N[resolveLang(autoCompactConfig)] || BACKEND_I18N.en;
+    const title = escapeAppleScriptString(toastMeta?.title || tDict.toastTitle || 'Context & Cache Monitor');
+    const body = escapeAppleScriptString(
+      toastMeta?.line1
+        ? `${toastMeta.line1} — /compact copied to clipboard`
+        : '已复制 /compact 到剪贴板，请在聊天框按 Cmd+V 发送'
+    );
+    await execFn('osascript', ['-e', `display notification "${body}" with title "${title}"`], { timeout: 5000 });
+    return {
+      ok: true,
+      action: 'notify',
+      reason: 'COPIED_AND_NOTIFIED',
+      message: '已复制 /compact 到剪贴板并发送 macOS 系统通知',
+    };
+  }
+
+  if (mode === 'toast_confirm') {
+    const tDict = BACKEND_I18N[resolveLang(autoCompactConfig)] || BACKEND_I18N.en;
+    const line1 = toastMeta?.line1 || tDict.toastTitle || 'Context threshold reached';
+    const line2 = toastMeta?.line2 || tDict.toastLine2 || 'Click Compact to send /compact now';
+    const msg = escapeAppleScriptString(`${line1} — ${line2}`);
+    const dialogScript = `display dialog "${msg}" with title "Context & Cache Monitor" buttons {"+20K", "Later", "Compact"} default button "Compact" giving up after 25`;
+    const dlgRes = await execFn('osascript', ['-e', dialogScript], { timeout: 35000 });
+    if (!dlgRes.ok) {
+      const errText = `${dlgRes.stderr || ''} ${dlgRes.error || ''}`;
+      if (/-128|User canceled/i.test(errText)) {
+        return { ok: false, reason: 'TOAST_DISMISSED', message: '用户已取消弹窗，本轮已延后' };
+      }
+      return {
+        ok: false,
+        reason: 'OSASCRIPT_ERROR',
+        message: (dlgRes.stderr || dlgRes.error || 'macOS 确认弹窗执行失败').trim().slice(0, 200),
+      };
+    }
+    if (/gave up:true/i.test(dlgRes.stdout)) {
+      return { ok: false, reason: 'TOAST_TIMEOUT', message: 'macOS 确认弹窗超时未点击，已自动关闭' };
+    }
+    const btnMatch = dlgRes.stdout.match(/button returned:([^,\r\n]*)/i);
+    const btn = (btnMatch?.[1] || '').trim();
+    if (btn === '+20K') {
+      return {
+        ok: false,
+        deferred: true,
+        action: 'defer',
+        bumpK: 20,
+        reason: 'TOAST_DEFERRED_20K',
+        message: '用户点击 +20K，已临时上调本次压缩阈值 +20K',
+      };
+    }
+    if (btn === 'Compact') {
+      const sendRes = await sendKeystrokes();
+      if (sendRes.ok) {
+        return {
+          ...sendRes,
+          reason: 'TOAST_CONFIRMED_SENT',
+          message: '已在 macOS 弹窗确认并发送 /compact',
+        };
+      }
+      return sendRes;
+    }
+    return { ok: false, reason: 'TOAST_DISMISSED', message: '用户点击暂不，本轮已延后' };
+  }
+
+  return sendKeystrokes();
+}
+
+export async function runLinuxCompact(mode, toastMeta = null, options = {}) {
+  const execFn = options._execFileAsync || execFileAsync;
+  const execInFn = options._execFileWithInput || execFileWithInput;
+
+  const clipCandidates = [
+    ['wl-copy', []],
+    ['xclip', ['-selection', 'clipboard']],
+    ['xsel', ['--clipboard', '--input']],
+  ];
+  let copied = false;
+  for (const [cmd, args] of clipCandidates) {
+    const r = await execInFn(cmd, args, '/compact', { timeout: 2000 });
+    if (r.ok) {
+      copied = true;
+      break;
+    }
+  }
+
+  const tDict = BACKEND_I18N[resolveLang(autoCompactConfig)] || BACKEND_I18N.en;
+  const title = toastMeta?.title || tDict.toastTitle || 'Context & Cache Monitor';
+  const body = toastMeta?.line1
+    ? `${toastMeta.line1} — /compact ${copied ? 'copied to clipboard' : 'ready to run'}`
+    : (copied ? 'Copied /compact to clipboard. Paste in chat to compact.' : 'Context threshold reached. Run /compact in chat.');
+  await execFn('notify-send', [title, body], { timeout: 3000 });
+
+  if (mode === 'notify') {
+    return {
+      ok: copied,
+      action: 'notify',
+      copiedOnly: copied,
+      reason: copied ? 'COPIED_AND_NOTIFIED' : 'LINUX_CLIPBOARD_UNAVAILABLE',
+      message: copied
+        ? '已复制 /compact 到剪贴板并发送桌面通知'
+        : '未检测到 wl-copy / xclip / xsel，请手动输入 /compact 或切换为 hook_guard / hook_block 模式',
+    };
+  }
+
+  return {
+    ok: false,
+    action: 'notify',
+    copiedOnly: copied,
+    reason: 'LINUX_FALLBACK_NOTIFY',
+    message: copied
+      ? '已复制 /compact 到剪贴板。Linux 端不自动注入按键，请在聊天框粘贴执行，或推荐使用 hook_guard / hook_block / notify 模式。'
+      : 'Linux 端暂不支持自动按键发送（且未检测到 wl-copy/xclip/xsel），请手动输入 /compact，或推荐使用 hook_guard / hook_block / notify 模式。',
+  };
+}
+
+export function runPlatformCompact(mode, toastMeta = null, options = {}) {
+  const platform = options.platform || process.platform;
+  if (platform === 'win32') return runPowerShellCompact(mode, toastMeta, options);
+  if (platform === 'darwin') return runMacOsCompact(mode, toastMeta, options);
+  return runLinuxCompact(mode, toastMeta, options);
 }
 
 function loadHookState() {
@@ -1396,9 +1620,9 @@ async function triggerCompactNow(source = 'manual_toast') {
     if (nowLocked - (autoCompactConfig.lastTriggeredAt || 0) < cooldownMs) {
       return { skipped: true, reason: 'COOLDOWN', message: '仍在压缩冷却期内，已跳过重复发送' };
     }
-    const res = await runPowerShellCompact('ui_send', null, { keepClipboard: true });
+    const res = await runPlatformCompact('ui_send', null, { keepClipboard: true });
     let verified = Boolean(res.ok);
-    let copiedOnly = false;
+    let copiedOnly = Boolean(res.copiedOnly);
     let finalMsg = res.message;
     let finalReason = res.reason;
     if (res.ok && tPath) {
@@ -1406,7 +1630,9 @@ async function triggerCompactNow(source = 'manual_toast') {
       if (!verified) {
         copiedOnly = true;
         finalReason = 'COPIED_FOCUS_IN_PANEL';
-        finalMsg = '已复制 /compact 到剪贴板（点击面板按钮时焦点在右侧面板内，请点一下左侧聊天框按 Ctrl+V 回车）';
+        finalMsg = process.platform === 'darwin'
+          ? '已复制 /compact 到剪贴板（点击面板按钮时焦点在右侧面板内，请点一下左侧聊天框按 Cmd+V 回车）'
+          : '已复制 /compact 到剪贴板（点击面板按钮时焦点在右侧面板内，请点一下左侧聊天框按 Ctrl+V 回车）';
       }
     }
     const entry = {
@@ -1541,7 +1767,7 @@ async function evaluateAutoCompact(forceTest = false) {
             ? `Hook 硬拦截已就绪：下次对话前若上下文占用 >= ${eff.effectiveK}K 将自动暂停等待 /compact`
             : `Hook 护航已就绪：下次对话前若上下文占用 >= ${eff.effectiveK}K 将注入收尾提醒与内联横幅`,
         }
-      : await runPowerShellCompact(mode, toastMeta, {
+      : await runPlatformCompact(mode, toastMeta, {
           requireForeground: !forceTest && mode === 'ui_send',
           minInputIdleMs: !forceTest && mode === 'ui_send' ? Math.min(6000, Math.max(3000, Math.floor(idleMs * 0.6))) : 0,
           targetTokens,
@@ -1549,6 +1775,9 @@ async function evaluateAutoCompact(forceTest = false) {
           anyOtherBusy,
         });
     if (!forceTest && res.deferred) {
+      if (res.bumpK) {
+        snoozeAutoCompact({ bumpK: res.bumpK });
+      }
       autoCompactConfig.lastTriggeredStatus = `静默挂起: ${res.message}`;
       saveAutoCompactConfig(autoCompactConfig);
       try { autoCompactConfigMtime = statSync(AUTO_COMPACT_PATH).mtimeMs; } catch {}

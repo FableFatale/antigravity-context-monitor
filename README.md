@@ -134,8 +134,8 @@ Open the **Settings** drawer in the top-right corner of the dashboard to choose 
 
 | Mode | Behavior | Platform |
 | :--- | :--- | :--- |
-| **Desktop Toast Confirmation** (`toast_confirm`) | Shows a lightweight, non-focus-stealing bottom-right toast. Click **Compact** to send `/compact` immediately, or **+20K** to defer. | Windows |
-| **Unattended Auto-Compact** (`ui_send`) | Waits until the session is idle, sends `/compact` to the Antigravity window, and restores your clipboard afterward. | Windows |
+| **Desktop Toast Confirmation** (`toast_confirm`) | Shows a lightweight confirmation prompt (bottom-right toast on Windows, native dialog on macOS). Click **Compact** to send `/compact` immediately, or **+20K** to defer. | Windows / macOS |
+| **Unattended Auto-Compact** (`ui_send`) | Waits until the session is idle, sends `/compact` to the Antigravity window, and restores your clipboard afterward. | Windows / macOS |
 | **Hook Soft Guard** (`hook_guard`) | Displays a 0-token inline notice via `PreInvocation` hook and nudges the agent to wrap up before hitting lossy compaction. | Windows / macOS / Linux |
 | **Hook Hard Gate** (`hook_block`) | Pauses the next model invocation once the threshold is exceeded until you run `/compact`. | Windows / macOS / Linux |
 | **Notify Only** (`notify`) | Copies `/compact` to your clipboard and alerts you without touching any window. | Windows / macOS / Linux |
@@ -154,7 +154,7 @@ For Marketplace security review transparency, every optional local-execution or 
 | Capability | Trigger & Default State | Scope & Safeguards |
 | :--- | :--- | :--- |
 | **Transcript & SQLite Reading** | Active when plugin is enabled | Strictly read-only access to local Antigravity conversation transcripts and metadata. No data leaves your machine. |
-| **Windows `/compact` UI Automation** (`toast_confirm` / `ui_send`) | **Opt-in only** (requires user selection in Settings; `toast_confirm` requires an explicit click on **Compact**) | Runs a local Windows PowerShell helper only when Antigravity is the active foreground window and keyboard/mouse input is idle; preserves and restores the user's clipboard after sending `/compact`. Never runs on macOS/Linux. |
+| **Desktop `/compact` UI Automation** (`toast_confirm` / `ui_send`) | **Opt-in only** (requires user selection in Settings; `toast_confirm` requires an explicit click on **Compact**) | On Windows, runs a local PowerShell helper only when Antigravity is the active foreground window and keyboard/mouse input is idle; on macOS, uses native `osascript` + `pbcopy`/`pbpaste` (requires macOS Accessibility permission for keystrokes, otherwise falls back safely to clipboard); preserves and restores the user's clipboard after sending `/compact`. On Linux, falls back to clipboard + notification only and never spawns PowerShell. |
 | **RTK CLI Auto-Installer** | **Explicit button click only** (**Install RTK** in Settings) | Invokes the OS package manager (`winget`, `brew`, official `install.sh`, or `cargo`) solely when the user clicks the install button. Never runs automatically. |
 | **Plugin Update Check & Apply** | **Explicit button click only** (**Check Updates** / **Update Now** in Settings) | Zero background polling. Only contacts GitHub (`raw.githubusercontent.com` / `git ls-remote` / `api.github.com`) when clicked, and runs `git pull --ff-only origin main` only on explicit confirmation. |
 | **Local `ConversationService` Metadata** | Active when `ANTIGRAVITY_LS_ADDRESS` & `ANTIGRAVITY_CSRF_TOKEN` are provided by Antigravity | Read-only localhost RPC (`ListConversations`) to enrich conversation titles and `runState`; gracefully falls back to local files when absent. |

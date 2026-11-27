@@ -83,7 +83,7 @@ const __App = ${AppId};
 const __applyTheme = ${applyThemeId || '(() => {})'};
 const __applyVars = ${applyVarsId || '(() => {})'};
 
-const app = new __App({ name: 'Context & Cache Monitor', version: '1.8.11' }, {});
+const app = new __App({ name: 'Context & Cache Monitor', version: '1.8.12' }, {});
 
 const applyCtx = (ctx) => {
   if (!ctx) return;
@@ -185,7 +185,7 @@ ensureConnected()
 }
 
 const server = new Server(
-  { name: 'context-monitor', version: '1.8.11' },
+  { name: 'context-monitor', version: '1.8.12' },
   {
     capabilities: {
       tools: {},
